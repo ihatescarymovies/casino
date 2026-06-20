@@ -107,7 +107,7 @@ export function Cashier() {
       {/* Security badge */}
       <div className="flex items-center gap-2 text-xs text-muted-foreground mb-8 bg-card border border-white/5 rounded-lg px-4 py-3">
         <Lock className="h-4 w-4 text-primary flex-shrink-0" />
-        <span>All transactions are encrypted and processed securely via Stripe. Charter &amp; Oak never stores your card details.</span>
+        <span>All transactions are encrypted and processed securely via PayRam. Charter &amp; Oak never stores your payment details.</span>
       </div>
 
       {error && (

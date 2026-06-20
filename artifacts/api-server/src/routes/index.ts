@@ -5,7 +5,7 @@ import gamesRouter from "./games";
 import promotionsRouter from "./promotions";
 import winnersRouter from "./winners";
 import statsRouter from "./stats";
-import stripeRouter from "./stripe";
+import paymentsRouter from "./payments";
 
 const router: IRouter = Router();
 
@@ -15,6 +15,6 @@ router.use("/games", gamesRouter);
 router.use("/promotions", promotionsRouter);
 router.use("/winners", winnersRouter);
 router.use("/stats", statsRouter);
-router.use("/payments", stripeRouter);
+router.use("/payments", paymentsRouter);
 
 export default router;
