@@ -90,6 +90,26 @@ router.post("/checkout", async (req: any, res) => {
   }
 });
 
+router.get("/status/:referenceId", async (req: any, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const rows = await db.execute(
+      sql`SELECT reference_id, status, filled_amount, filled_currency, amount_usd, updated_at
+          FROM payment_sessions
+          WHERE reference_id = ${req.params.referenceId}
+            AND user_id = ${req.user.id}
+          LIMIT 1`
+    );
+    const row = rows.rows[0];
+    if (!row) return res.status(404).json({ error: "Session not found" });
+    res.json(row);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to fetch status" });
+  }
+});
+
 router.get("/history", async (req: any, res) => {
   try {
     if (!req.isAuthenticated()) {

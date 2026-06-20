@@ -1,12 +1,13 @@
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useListGames, getListGamesQueryKey } from "@workspace/api-client-react";
 import { GameCard } from "@/components/game-card";
+import { useToast } from "@/hooks/use-toast";
 import {
   Trophy,
   Zap,
@@ -20,6 +21,7 @@ import {
   Clock,
   AlertCircle,
   CircleDot,
+  RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -96,11 +98,17 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
+const PENDING_STATUSES = new Set(["open", "verifying", "partial"]);
+const POLL_INTERVAL_MS = 10_000;
+
 export function Dashboard() {
   const { user, isLoading, isAuthenticated, logout, login } = useAuth();
   const [, navigate] = useLocation();
   const [deposits, setDeposits] = useState<DepositSession[]>([]);
   const [depositsLoading, setDepositsLoading] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
+  const depositsRef = useRef<DepositSession[]>([]);
+  const { toast } = useToast();
 
   const { data: hotGames, isLoading: gamesLoading } = useListGames(
     { category: "slots" },
@@ -113,16 +121,68 @@ export function Dashboard() {
     }
   }, [isLoading, isAuthenticated, login]);
 
+  const fetchHistory = async () => {
+    const r = await fetch(`${BASE_URL}/api/payments/history`, { credentials: "include" });
+    const data = await r.json();
+    return Array.isArray(data) ? data : [];
+  };
+
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetch(`${BASE_URL}/api/payments/history`, { credentials: "include" })
-      .then((r) => r.json())
+    fetchHistory()
       .then((data) => {
-        setDeposits(Array.isArray(data) ? data : []);
+        setDeposits(data);
+        depositsRef.current = data;
         setDepositsLoading(false);
       })
       .catch(() => setDepositsLoading(false));
   }, [isAuthenticated]);
+
+  // Poll every 10s whenever any session is pending
+  useEffect(() => {
+    const hasPending = deposits.some((d) => PENDING_STATUSES.has(d.status));
+    if (!hasPending || !isAuthenticated) return;
+
+    setIsPolling(true);
+    const interval = setInterval(async () => {
+      try {
+        const updated = await fetchHistory();
+        const prev = depositsRef.current;
+
+        // Detect newly completed sessions and fire toasts
+        for (const session of updated) {
+          const old = prev.find((p) => p.reference_id === session.reference_id);
+          if (
+            old &&
+            PENDING_STATUSES.has(old.status) &&
+            (session.status === "completed" || session.status === "over_filled")
+          ) {
+            toast({
+              title: "💰 Deposit confirmed!",
+              description: `Your $${session.amount_usd} deposit has been received${
+                session.filled_currency ? ` in ${session.filled_currency}` : ""
+              }.`,
+            });
+          }
+        }
+
+        depositsRef.current = updated;
+        setDeposits(updated);
+
+        if (!updated.some((d) => PENDING_STATUSES.has(d.status))) {
+          setIsPolling(false);
+          clearInterval(interval);
+        }
+      } catch {
+        // silently ignore poll errors
+      }
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      clearInterval(interval);
+      setIsPolling(false);
+    };
+  }, [deposits, isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -270,6 +330,12 @@ export function Dashboard() {
           <div className="flex items-center gap-2">
             <Wallet className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-bold text-white">Deposit History</h2>
+            {isPolling && (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <RefreshCw className="h-3 w-3 animate-spin" />
+                Checking…
+              </span>
+            )}
           </div>
           <Button
             variant="ghost"
