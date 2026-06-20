@@ -6,6 +6,7 @@ import { GameDetail } from "@/pages/game-detail";
 import { Promotions } from "@/pages/promotions";
 import { PromotionDetail } from "@/pages/promotion-detail";
 import { Winners } from "@/pages/winners";
+import { Dashboard } from "@/pages/dashboard";
 import NotFound from "@/pages/not-found";
 
 export function Router() {
@@ -18,6 +19,7 @@ export function Router() {
         <Route path="/promotions" component={Promotions} />
         <Route path="/promotions/:id" component={PromotionDetail} />
         <Route path="/winners" component={Winners} />
+        <Route path="/dashboard" component={Dashboard} />
         <Route component={NotFound} />
       </Switch>
     </Layout>

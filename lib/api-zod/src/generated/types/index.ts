@@ -6,11 +6,20 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './authorizationSessionHeaderParameter';
+export * from './authUser';
+export * from './authUserEnvelope';
+export * from './beginBrowserLoginParams';
 export * from './casinoStats';
+export * from './errorEnvelope';
 export * from './game';
 export * from './gameCategory';
+export * from './handleBrowserLoginCallbackParams';
 export * from './healthStatus';
 export * from './listGamesParams';
 export * from './listWinnersParams';
+export * from './logoutSuccess';
+export * from './mobileTokenExchangeRequest';
+export * from './mobileTokenExchangeSuccess';
 export * from './promotion';
 export * from './winner';
