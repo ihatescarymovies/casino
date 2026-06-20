@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { User, LogOut, LayoutDashboard } from "lucide-react";
+import { User, LogOut, LayoutDashboard, CreditCard } from "lucide-react";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
@@ -32,7 +32,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-2 transition-transform hover:scale-105">
             <span className="text-2xl font-bold tracking-tighter text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]">
-              BuckeyeBet
+              Charter &amp; Oak
             </span>
           </Link>
 
@@ -77,6 +77,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
                       <span>My Dashboard</span>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/cashier" className="flex items-center gap-2 cursor-pointer">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      <span>Cashier / Deposit</span>
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator className="bg-white/10" />
                   <DropdownMenuItem
                     onClick={logout}
@@ -113,7 +119,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <footer className="w-full border-t border-white/5 bg-card py-8 mt-12">
         <div className="container mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
           <div className="flex flex-col gap-1">
-            <span className="text-xl font-bold text-primary tracking-tighter">BuckeyeBet</span>
+            <span className="text-xl font-bold text-primary tracking-tighter">Charter &amp; Oak</span>
             <span className="text-xs text-muted-foreground">Ohio's Premier Online Casino.</span>
           </div>
 

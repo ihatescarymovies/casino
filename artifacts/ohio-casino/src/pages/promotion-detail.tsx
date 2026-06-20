@@ -74,7 +74,7 @@ export function PromotionDetail() {
             
             <h3 className="text-xl font-bold text-white mb-4">How to Claim</h3>
             <ol className="space-y-2 text-muted-foreground ml-4 list-decimal marker:text-primary marker:font-bold">
-              <li>Log in to your BuckeyeBet account.</li>
+              <li>Log in to your Charter &amp; Oak account.</li>
               <li>Opt-in to this promotion via the cashier page.</li>
               <li>Make a qualifying deposit if required.</li>
               <li>Your bonus will be credited automatically.</li>
