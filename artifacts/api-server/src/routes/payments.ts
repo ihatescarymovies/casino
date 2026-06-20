@@ -90,6 +90,25 @@ router.post("/checkout", async (req: any, res) => {
   }
 });
 
+router.get("/history", async (req: any, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    const rows = await db.execute(
+      sql`SELECT reference_id, invoice_id, amount_usd, status, filled_amount, filled_currency, created_at
+          FROM payment_sessions
+          WHERE user_id = ${req.user.id}
+          ORDER BY created_at DESC
+          LIMIT 20`
+    );
+    res.json(rows.rows);
+  } catch (err: any) {
+    console.error("History error:", err);
+    res.status(500).json({ error: "Failed to fetch deposit history" });
+  }
+});
+
 router.get("/payram-webhook", async (req, res) => {
   try {
     await WebhookHandlers.processPayramWebhook(req.query as Record<string, any>);

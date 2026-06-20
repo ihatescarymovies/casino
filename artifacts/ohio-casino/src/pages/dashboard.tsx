@@ -1,11 +1,11 @@
 import { useAuth } from "@workspace/replit-auth-web";
 import { useLocation } from "wouter";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useListGames, getListGamesQueryKey, useListWinners, getListWinnersQueryKey } from "@workspace/api-client-react";
+import { useListGames, getListGamesQueryKey } from "@workspace/api-client-react";
 import { GameCard } from "@/components/game-card";
 import {
   Trophy,
@@ -15,8 +15,25 @@ import {
   Shield,
   LogOut,
   Crown,
+  Wallet,
+  CheckCircle2,
+  Clock,
+  AlertCircle,
+  CircleDot,
 } from "lucide-react";
 import { motion } from "framer-motion";
+
+const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, "");
+
+interface DepositSession {
+  reference_id: string;
+  invoice_id: string;
+  amount_usd: number;
+  status: string;
+  filled_amount: string | null;
+  filled_currency: string | null;
+  created_at: string;
+}
 
 function StatCard({
   icon: Icon,
@@ -49,9 +66,41 @@ function StatCard({
   );
 }
 
+function StatusBadge({ status }: { status: string }) {
+  switch (status) {
+    case "completed":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-400">
+          <CheckCircle2 className="h-3.5 w-3.5" /> Completed
+        </span>
+      );
+    case "partial":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-yellow-400">
+          <AlertCircle className="h-3.5 w-3.5" /> Partial
+        </span>
+      );
+    case "open":
+    case "verifying":
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-blue-400">
+          <Clock className="h-3.5 w-3.5" /> Pending
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+          <CircleDot className="h-3.5 w-3.5" /> {status}
+        </span>
+      );
+  }
+}
+
 export function Dashboard() {
   const { user, isLoading, isAuthenticated, logout, login } = useAuth();
   const [, navigate] = useLocation();
+  const [deposits, setDeposits] = useState<DepositSession[]>([]);
+  const [depositsLoading, setDepositsLoading] = useState(true);
 
   const { data: hotGames, isLoading: gamesLoading } = useListGames(
     { category: "slots" },
@@ -63,6 +112,17 @@ export function Dashboard() {
       login();
     }
   }, [isLoading, isAuthenticated, login]);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch(`${BASE_URL}/api/payments/history`, { credentials: "include" })
+      .then((r) => r.json())
+      .then((data) => {
+        setDeposits(Array.isArray(data) ? data : []);
+        setDepositsLoading(false);
+      })
+      .catch(() => setDepositsLoading(false));
+  }, [isAuthenticated]);
 
   if (isLoading) {
     return (
@@ -93,6 +153,10 @@ export function Dashboard() {
     user.firstName
       ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
       : user.email ?? "Player";
+
+  const totalDeposited = deposits
+    .filter((d) => d.status === "completed" || d.status === "partial")
+    .reduce((sum, d) => sum + (d.amount_usd ?? 0), 0);
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl">
@@ -193,6 +257,106 @@ export function Dashboard() {
         >
           View All Bonuses
         </Button>
+      </motion.div>
+
+      {/* Deposit History */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="mb-10"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-2">
+            <Wallet className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold text-white">Deposit History</h2>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-primary hover:text-primary/80"
+            onClick={() => navigate("/cashier")}
+          >
+            + Add Funds
+          </Button>
+        </div>
+
+        {depositsLoading ? (
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-14 rounded-xl" />
+            ))}
+          </div>
+        ) : deposits.length === 0 ? (
+          <div className="bg-card border border-white/5 rounded-xl px-6 py-10 text-center">
+            <Wallet className="h-10 w-10 mx-auto mb-3 text-muted-foreground opacity-30" />
+            <p className="text-white font-medium mb-1">No deposits yet</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Make your first deposit to claim your welcome bonus.
+            </p>
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-primary/90"
+              onClick={() => navigate("/cashier")}
+            >
+              Deposit Now
+            </Button>
+          </div>
+        ) : (
+          <div className="bg-card border border-white/5 rounded-xl overflow-hidden">
+            {totalDeposited > 0 && (
+              <div className="px-5 py-3 border-b border-white/5 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Total deposited</span>
+                <span className="text-sm font-bold text-primary">${totalDeposited.toLocaleString()}</span>
+              </div>
+            )}
+            <div className="divide-y divide-white/5">
+              {deposits.map((dep, i) => {
+                const date = new Date(dep.created_at);
+                const dateStr = date.toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                });
+                const timeStr = date.toLocaleTimeString("en-US", {
+                  hour: "numeric",
+                  minute: "2-digit",
+                });
+                return (
+                  <motion.div
+                    key={dep.reference_id}
+                    initial={{ opacity: 0, x: -8 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: i * 0.04 }}
+                    className="flex items-center justify-between px-5 py-4 hover:bg-white/[0.02] transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-white/5">
+                        <Wallet className="h-4 w-4 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          ${dep.amount_usd} Deposit
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {dateStr} · {timeStr}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right flex flex-col items-end gap-1">
+                      <StatusBadge status={dep.status} />
+                      {dep.filled_amount && dep.filled_currency && (
+                        <p className="text-xs text-muted-foreground">
+                          {dep.filled_amount} {dep.filled_currency}
+                        </p>
+                      )}
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </motion.div>
 
       {/* Recommended Games */}
