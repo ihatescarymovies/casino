@@ -1,22 +1,29 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Ohio Casino API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: games
+    description: Casino games
+  - name: promotions
+    description: Casino promotions and bonuses
+  - name: winners
+    description: Recent winners feed
+  - name: account
+    description: Player account
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,13 +31,255 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /games:
+    get:
+      operationId: listGames
+      tags: [games]
+      summary: List all casino games
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: featured
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        "200":
+          description: List of games
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Game"
+
+  /games/{id}:
+    get:
+      operationId: getGame
+      tags: [games]
+      summary: Get game details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Game details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Game"
+        "404":
+          description: Not found
+
+  /games/categories:
+    get:
+      operationId: listGameCategories
+      tags: [games]
+      summary: List all game categories with counts
+      responses:
+        "200":
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameCategory"
+
+  /games/featured:
+    get:
+      operationId: listFeaturedGames
+      tags: [games]
+      summary: Get featured games for homepage hero
+      responses:
+        "200":
+          description: Featured games
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Game"
+
+  /promotions:
+    get:
+      operationId: listPromotions
+      tags: [promotions]
+      summary: List active promotions
+      responses:
+        "200":
+          description: List of promotions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Promotion"
+
+  /promotions/{id}:
+    get:
+      operationId: getPromotion
+      tags: [promotions]
+      summary: Get promotion details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Promotion details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Promotion"
+
+  /winners:
+    get:
+      operationId: listWinners
+      tags: [winners]
+      summary: Recent big winners feed
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Recent winners
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Winner"
+
+  /stats:
+    get:
+      operationId: getCasinoStats
+      tags: [games]
+      summary: Casino-wide statistics (total payout, active players, jackpot)
+      responses:
+        "200":
+          description: Casino stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CasinoStats"
+
 components:
   schemas:
     HealthStatus:
       type: object
+      required: [status]
       properties:
         status:
           type: string
-      required:
-        - status
 
+    Game:
+      type: object
+      required: [id, name, category, provider, rtp, imageUrl, isFeatured, isHot, isNew]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          description: "slots | blackjack | roulette | poker | sports | live"
+        provider:
+          type: string
+        rtp:
+          type: number
+          description: Return to player percentage
+        minBet:
+          type: number
+        maxBet:
+          type: number
+        imageUrl:
+          type: string
+        isFeatured:
+          type: boolean
+        isHot:
+          type: boolean
+        isNew:
+          type: boolean
+        description:
+          type: ["string", "null"]
+        jackpotAmount:
+          type: ["number", "null"]
+
+    GameCategory:
+      type: object
+      required: [name, count, iconName]
+      properties:
+        name:
+          type: string
+        count:
+          type: integer
+        iconName:
+          type: string
+
+    Promotion:
+      type: object
+      required: [id, title, description, type, bonusAmount, expiresAt, imageUrl]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          description: "welcome | reload | free-spins | cashback | vip"
+        bonusAmount:
+          type: string
+        wagerRequirement:
+          type: ["integer", "null"]
+        expiresAt:
+          type: string
+        imageUrl:
+          type: string
+        isHighlighted:
+          type: boolean
+
+    Winner:
+      type: object
+      required: [id, playerName, gameName, winAmount, timestamp]
+      properties:
+        id:
+          type: integer
+        playerName:
+          type: string
+        gameName:
+          type: string
+        winAmount:
+          type: number
+        timestamp:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+
+    CasinoStats:
+      type: object
+      required: [totalPayoutToday, activePlayers, currentJackpot, gamesAvailable]
+      properties:
+        totalPayoutToday:
+          type: number
+        activePlayers:
+          type: integer
+        currentJackpot:
+          type: number
+        gamesAvailable:
+          type: integer

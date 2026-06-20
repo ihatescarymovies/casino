@@ -1,0 +1,38 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "4U-xmNctGqL50256FwAH8"
+uri = "file://artifacts/ohio-casino/src/assets/slots.png"
+type = "image"
+title = "Slots machine"
+
+[[generated]]
+id = "bkAdT19wtvPZwji1_3uDp"
+uri = "file://artifacts/ohio-casino/src/assets/blackjack.png"
+type = "image"
+title = "Blackjack table"
+
+[[generated]]
+id = "b07EG6bwnkgnX52N9tS3P"
+uri = "file://artifacts/ohio-casino/src/assets/roulette.png"
+type = "image"
+title = "Roulette wheel"
+
+[[generated]]
+id = "XpZ7PIL1Rbba_ghOM6wvn"
+uri = "file://artifacts/ohio-casino/src/assets/poker.png"
+type = "image"
+title = "Poker cards"
+
+[[generated]]
+id = "cH-4ECjvp5_p0sgWVgnNE"
+uri = "file://artifacts/ohio-casino/src/assets/sports.png"
+type = "image"
+title = "Sports betting"
+
+[[generated]]
+id = "LzvBnxwHBdTC4LS_3ftiI"
+uri = "file://artifacts/ohio-casino/src/assets/live-dealer.png"
+type = "image"
+title = "Live dealer"
