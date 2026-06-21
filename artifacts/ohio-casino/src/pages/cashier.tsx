@@ -143,7 +143,7 @@ export function Cashier() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
-                className={`relative bg-gradient-to-br ${colorClass} border rounded-2xl p-6 flex flex-col gap-4 hover:scale-[1.02] transition-transform`}
+                className={`relative bg-gradient-to-br ${colorClass} border rounded-2xl p-6 flex flex-col gap-4 hover:scale-[1.02] focus-within:scale-[1.02] transition-transform`}
               >
                 {isPopular && (
                   <Badge className="absolute top-4 right-4 bg-primary text-primary-foreground text-xs font-bold px-2">
@@ -174,6 +174,7 @@ export function Cashier() {
                       className="w-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-[0_0_12px_rgba(234,179,8,0.3)] font-bold"
                       onClick={() => handleDeposit(price.id)}
                       disabled={!!checkingOut}
+                      aria-busy={checkingOut === price.id}
                     >
                       {checkingOut === price.id ? "Redirecting..." : `Deposit ${formatAmount(price.unitAmount)}`}
                     </Button>

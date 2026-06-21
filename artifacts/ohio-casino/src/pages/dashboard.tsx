@@ -376,7 +376,7 @@ export function Dashboard() {
                 <span className="text-sm font-bold text-primary">${totalDeposited.toLocaleString()}</span>
               </div>
             )}
-            <div className="divide-y divide-white/5">
+            <div className="divide-y divide-white/5" aria-live="polite">
               {deposits.map((dep, i) => {
                 const date = new Date(dep.created_at);
                 const dateStr = date.toLocaleDateString("en-US", {

@@ -14,7 +14,7 @@ interface PromotionProps {
 
 export function PromotionCard({ id, title, description, type, bonusAmount, imageUrl, isHighlighted }: PromotionProps) {
   return (
-    <div className={`group relative rounded-xl overflow-hidden bg-card border ${isHighlighted ? 'border-primary shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'border-white/5'} transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 flex flex-col h-full`}>
+    <div className={`group relative rounded-xl overflow-hidden bg-card border ${isHighlighted ? 'border-primary shadow-[0_0_20px_rgba(234,179,8,0.2)]' : 'border-white/5'} transition-all duration-300 hover:scale-[1.02] hover:border-primary/50 focus-within:scale-[1.02] focus-within:border-primary/50 flex flex-col h-full`}>
       <div className="aspect-[21/9] w-full bg-muted relative overflow-hidden">
         {imageUrl ? (
           <img src={imageUrl} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
