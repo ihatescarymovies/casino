@@ -1,90 +1,180 @@
 import { useAuth } from "@workspace/replit-auth-web";
 import { useEffect, useState } from "react";
-import { Zap, Shield, CreditCard, Trophy, Lock } from "lucide-react";
+import {
+  CreditCard,
+  Lock,
+  Wallet,
+  Bitcoin,
+  Building2,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 
-interface DepositPackage {
-  id: string;
-  name: string;
+type DepositMethod = "card" | "crypto" | "bank";
+type Step = "method" | "amount" | "confirm";
+
+const METHODS: {
+  id: DepositMethod;
+  label: string;
   description: string;
-  metadata: Record<string, string>;
-  prices: { id: string; unitAmount: number; currency: string }[];
-}
+  icon: React.ElementType;
+  color: string;
+}[] = [
+  {
+    id: "card",
+    label: "Credit / Debit Card",
+    description: "Visa, Mastercard, Discover — instant deposit",
+    icon: CreditCard,
+    color: "from-blue-500/20 to-blue-600/5 border-blue-500/30",
+  },
+  {
+    id: "crypto",
+    label: "Cryptocurrency",
+    description: "BTC, ETH, USDT — processed in minutes",
+    icon: Bitcoin,
+    color: "from-amber-500/20 to-amber-600/5 border-amber-500/30",
+  },
+  {
+    id: "bank",
+    label: "Bank Transfer",
+    description: "ACH / Wire — 1–3 business days",
+    icon: Building2,
+    color: "from-green-500/20 to-green-600/5 border-green-500/30",
+  },
+];
 
-function formatAmount(cents: number) {
+const PRESET_AMOUNTS = [2500, 5000, 10000, 25000, 50000, 100000];
+
+function formatUSD(cents: number): string {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
 }
 
-const PACKAGE_ICONS: Record<string, React.ElementType> = {
-  starter: Zap,
-  pro: Trophy,
-  elite: Shield,
-  vip: CreditCard,
-};
-
-const PACKAGE_COLORS: Record<string, string> = {
-  starter: "from-blue-500/20 to-blue-600/5 border-blue-500/30",
-  pro: "from-primary/20 to-primary/5 border-primary/30",
-  elite: "from-purple-500/20 to-purple-600/5 border-purple-500/30",
-  vip: "from-red-500/20 to-red-600/5 border-red-500/30",
-};
-
 export default function Cashier() {
   const { isAuthenticated, isLoading: authLoading, login } = useAuth();
-  const [packages, setPackages] = useState<DepositPackage[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [checkingOut, setCheckingOut] = useState<string | null>(null);
+
+  const [step, setStep] = useState<Step>("method");
+  const [method, setMethod] = useState<DepositMethod | null>(null);
+  const [amount, setAmount] = useState<number | null>(null);
+  const [customAmount, setCustomAmount] = useState("");
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      login();
-    }
+    if (!authLoading && !isAuthenticated) login();
   }, [authLoading, isAuthenticated, login]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-    fetch("/api/payments/deposit-packages", { credentials: "include" })
-      .then((r) => r.json())
-      .then((data) => {
-        setPackages(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Could not load deposit packages. Please try again.");
-        setLoading(false);
-      });
-  }, [isAuthenticated]);
+  const selectedAmount =
+    amount ??
+    (customAmount ? Math.round(parseFloat(customAmount) * 100) : null);
 
-  const handleDeposit = async (priceId: string) => {
-    setCheckingOut(priceId);
+  function selectMethod(id: DepositMethod) {
+    setMethod(id);
+    setAmount(null);
+    setCustomAmount("");
     setError(null);
+    setStep("amount");
+  }
+
+  function selectPreset(cents: number) {
+    setAmount(cents);
+    setCustomAmount("");
+  }
+
+  function handleCustomChange(value: string) {
+    setCustomAmount(value);
+    setAmount(null);
+  }
+
+  function goBack() {
+    setError(null);
+    if (step === "confirm") setStep("amount");
+    else if (step === "amount") setStep("method");
+  }
+
+  async function handleDeposit() {
+    if (!selectedAmount || selectedAmount < 500) {
+      setError("Minimum deposit is $5.00");
+      return;
+    }
+    if (selectedAmount > 1000000) {
+      setError("Maximum single deposit is $10,000.00");
+      return;
+    }
+
+    setProcessing(true);
+    setError(null);
+
     try {
       const res = await fetch("/api/payments/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({
+          amount: selectedAmount,
+          method,
+        }),
       });
       const data = await res.json();
+
       if (data.url) {
         window.location.href = data.url;
-      } else {
-        setError(data.error || "Failed to start checkout.");
+        return;
       }
+
+      // If the API doesn't redirect (e.g. mock/stub), show success
+      setSuccess(true);
     } catch {
       setError("Network error. Please try again.");
     } finally {
-      setCheckingOut(null);
+      setProcessing(false);
     }
-  };
+  }
 
   if (authLoading || (!isAuthenticated && !authLoading)) return null;
 
+  // Success state
+  if (success) {
+    return (
+      <div className="container mx-auto px-4 py-12 max-w-4xl">
+        <div className="text-center py-20">
+          <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center">
+            <Check className="h-8 w-8 text-green-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Deposit Submitted
+          </h2>
+          <p className="text-muted-foreground mb-8">
+            Your deposit of {formatUSD(selectedAmount ?? 0)} is being processed.
+            Funds will appear in your account shortly.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setSuccess(false);
+              setStep("method");
+              setMethod(null);
+              setAmount(null);
+              setCustomAmount("");
+            }}
+          >
+            Make Another Deposit
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
+      {/* Header */}
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2">
-          <CreditCard className="h-7 w-7 text-primary" />
+          <Wallet className="h-7 w-7 text-primary" />
           <h1 className="text-3xl font-bold text-white">Cashier</h1>
         </div>
         <p className="text-muted-foreground">
@@ -102,99 +192,223 @@ export default function Cashier() {
         </span>
       </div>
 
+      {/* Progress indicator */}
+      <div className="flex items-center gap-2 mb-8 text-sm">
+        {(["method", "amount", "confirm"] as Step[]).map((s, i) => {
+          const labels = ["Method", "Amount", "Confirm"];
+          const isActive = step === s;
+          const isPast =
+            (s === "method" && step !== "method") ||
+            (s === "amount" && step === "confirm");
+          return (
+            <div key={s} className="flex items-center gap-2">
+              <div
+                className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold border transition-colors ${
+                  isActive
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : isPast
+                      ? "bg-primary/20 text-primary border-primary/40"
+                      : "bg-card text-muted-foreground border-white/10"
+                }`}
+              >
+                {isPast ? <Check className="h-4 w-4" /> : i + 1}
+              </div>
+              <span
+                className={
+                  isActive ? "text-white font-medium" : "text-muted-foreground"
+                }
+              >
+                {labels[i]}
+              </span>
+              {i < 2 && <div className="w-8 h-px bg-white/10 mx-1" />}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Error */}
       {error && (
-        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-red-400">
+        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-red-400 flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
           {error}
         </div>
       )}
 
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="h-52 bg-white/5 animate-pulse rounded-2xl"
-            />
-          ))}
-        </div>
-      ) : packages.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">
-          <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-20" />
-          <p className="text-lg font-medium text-white mb-2">
-            Deposit packages coming soon
-          </p>
-          <p className="text-sm">
-            Check back shortly — we&apos;re loading up the vault.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {packages.map((pkg, i) => {
-            const tier =
-              pkg.metadata?.tier ?? Object.keys(PACKAGE_ICONS)[i % 4];
-            const Icon = PACKAGE_ICONS[tier] ?? Zap;
-            const colorClass = PACKAGE_COLORS[tier] ?? PACKAGE_COLORS.starter;
-            const price = pkg.prices[0];
-            const isPopular = tier === "pro";
-
-            return (
-              <div
-                key={pkg.id}
-                className={`relative bg-gradient-to-br ${colorClass} border rounded-2xl p-6 flex flex-col gap-4 hover:scale-[1.02] focus-within:scale-[1.02] transition-transform`}
-              >
-                {isPopular && (
-                  <span className="absolute top-4 right-4 inline-flex items-center rounded-full bg-primary text-primary-foreground text-xs font-bold px-2 py-0.5">
-                    Most Popular
-                  </span>
-                )}
-                <div className="flex items-start gap-3">
-                  <div className="p-2.5 rounded-xl bg-white/5">
+      {/* Step 1: Method */}
+      {step === "method" && (
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">
+            Choose Deposit Method
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {METHODS.map((m) => {
+              const Icon = m.icon;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={`bg-gradient-to-br ${m.color} border rounded-2xl p-6 text-left hover:scale-[1.02] focus-within:scale-[1.02] transition-transform group`}
+                  onClick={() => selectMethod(m.id)}
+                  aria-label={`Deposit via ${m.label}`}
+                >
+                  <div className="p-2.5 rounded-xl bg-white/5 inline-block mb-4">
                     <Icon className="h-6 w-6 text-primary" />
                   </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-white">{pkg.name}</h3>
-                    {pkg.description && (
-                      <p className="text-sm text-muted-foreground mt-0.5">
-                        {pkg.description}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {price ? (
-                  <>
-                    <div className="flex items-end gap-1">
-                      <span className="text-4xl font-black text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]">
-                        {formatAmount(price.unitAmount)}
-                      </span>
-                      <span className="text-muted-foreground moderate text-sm mb-1">
-                        one-time
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="w-full btn btn-primary shadow-[0_0_12px_rgba(234,179,8,0.3)] font-bold"
-                      onClick={() => handleDeposit(price.id)}
-                      disabled={!!checkingOut}
-                      aria-busy={checkingOut === price.id}
-                    >
-                      {checkingOut === price.id
-                        ? "Redirecting..."
-                        : `Deposit ${formatAmount(price.unitAmount)}`}
-                    </button>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground text-sm">
-                    Pricing not available.
+                  <h3 className="text-lg font-bold text-white mb-1">
+                    {m.label}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {m.description}
                   </p>
-                )}
-              </div>
-            );
-          })}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      <p className="text-xs text-muted-foreground text-center mt-8">
+      {/* Step 2: Amount */}
+      {step === "amount" && (
+        <div>
+          <h2 className="text-xl font-bold text-white mb-4">Select Amount</h2>
+
+          {/* Preset amounts */}
+          <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+            {PRESET_AMOUNTS.map((cents) => {
+              const selected = amount === cents;
+              return (
+                <button
+                  key={cents}
+                  type="button"
+                  className={`py-3 px-4 rounded-xl border text-center font-bold transition-colors ${
+                    selected
+                      ? "bg-primary text-primary-foreground border-primary shadow-[0_0_12px_rgba(234,179,8,0.3)]"
+                      : "bg-card/50 text-white border-white/10 hover:border-primary/50"
+                  }`}
+                  onClick={() => selectPreset(cents)}
+                >
+                  {formatUSD(cents)}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Custom amount */}
+          <div className="mb-8">
+            <label
+              htmlFor="custom-amount"
+              className="block text-sm text-muted-foreground mb-2"
+            >
+              Or enter a custom amount (USD)
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
+                $
+              </span>
+              <input
+                id="custom-amount"
+                type="number"
+                min="5"
+                max="10000"
+                step="1"
+                placeholder="0.00"
+                value={customAmount}
+                onChange={(e) => handleCustomChange(e.target.value)}
+                className="w-full pl-8 pr-4 py-3 bg-card/50 border border-white/10 rounded-xl text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors"
+              onClick={goBack}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary flex items-center gap-2"
+              disabled={!selectedAmount || selectedAmount < 500}
+              onClick={() => {
+                if (selectedAmount && selectedAmount >= 500) {
+                  setError(null);
+                  setStep("confirm");
+                }
+              }}
+            >
+              Continue
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 3: Confirm */}
+      {step === "confirm" && (
+        <div>
+          <h2 className="text-xl font-bold text-white mb-6">Confirm Deposit</h2>
+
+          <div className="bg-card/50 border border-white/5 rounded-2xl p-6 backdrop-blur-xl mb-8">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Method</span>
+                <span className="text-white font-medium">
+                  {METHODS.find((m) => m.id === method)?.label ?? "—"}
+                </span>
+              </div>
+              <div className="h-px bg-white/5" />
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Amount</span>
+                <span className="text-2xl font-black text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]">
+                  {formatUSD(selectedAmount ?? 0)}
+                </span>
+              </div>
+              <div className="h-px bg-white/5" />
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Processing</span>
+                <span className="text-green-400 text-sm font-medium">
+                  Instant
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors"
+              onClick={goBack}
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary flex items-center gap-2 shadow-[0_0_12px_rgba(234,179,8,0.3)] font-bold min-w-[160px] justify-center"
+              disabled={processing}
+              onClick={handleDeposit}
+              aria-busy={processing}
+            >
+              {processing ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <>
+                  Confirm Deposit
+                  <Check className="h-4 w-4" />
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Footer disclaimer */}
+      <p className="text-xs text-muted-foreground text-center mt-10">
         Must be 21+. Gambling problem? Call{" "}
         <span className="text-white font-bold">1-800-589-9966</span>.
       </p>

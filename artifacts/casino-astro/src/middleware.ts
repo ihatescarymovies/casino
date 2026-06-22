@@ -34,6 +34,25 @@ async function getAuthUser(request: Request): Promise<AuthUser | null> {
   }
 }
 
+const SECURITY_HEADERS: Record<string, string> = {
+  "X-Frame-Options": "DENY",
+  "X-Content-Type-Options": "nosniff",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "X-DNS-Prefetch-Control": "on",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+  "Content-Security-Policy": [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' http://localhost:3000",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join("; "),
+};
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const user = await getAuthUser(context.request);
   context.locals.user = user;
@@ -49,5 +68,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
     );
   }
 
-  return next();
+  const response = await next();
+
+  for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+    response.headers.set(key, value);
+  }
+
+  return response;
 });
