@@ -6,8 +6,10 @@ import { formatCurrency } from "@/lib/formatters";
 import { getGameFallbackImage } from "@/lib/game-helpers";
 import type { Game } from "@workspace/api-client-react";
 
-const { id } = Astro.params;
-const gameId = parseInt(id || "0", 10);
+import { gameIdParamSchema } from "@/lib/schemas";
+
+const paramResult = gameIdParamSchema.safeParse(Astro.params);
+const gameId = paramResult.success ? paramResult.data.id : 0;
 
 const game = await apiFetch<{
   id: number;

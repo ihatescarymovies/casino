@@ -1,8 +1,11 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import Cashier from "@/components/islands/Cashier.tsx";
+import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
 ---
 
 <BaseLayout title="Cashier — Charter & Oak" description="Add funds to your account securely with our cashier.">
-  <Cashier client:load />
+  <IslandErrorBoundary client:load>
+    <Cashier client:load />
+  </IslandErrorBoundary>
 </BaseLayout>

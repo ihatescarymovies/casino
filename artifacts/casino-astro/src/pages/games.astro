@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import GamesFilter from "@/components/islands/GamesFilter.tsx";
+import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
 import { apiFetch } from "@/lib/api";
 import type { Game } from "@workspace/api-client-react";
 
@@ -19,6 +20,8 @@ const games = await apiFetch<Game[]>("/api/games");
       </div>
     </div>
 
-    <GamesFilter client:load categories={categories ?? []} games={games ?? []} />
+    <IslandErrorBoundary client:load>
+      <GamesFilter client:load categories={categories ?? []} games={games ?? []} />
+    </IslandErrorBoundary>
   </main>
 </BaseLayout>

@@ -1,8 +1,11 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import Transactions from "@/components/islands/Transactions.tsx";
+import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
 ---
 
 <BaseLayout title="Transaction History — Charter & Oak" description="View your deposits, withdrawals, bets, wins, and bonuses.">
-  <Transactions client:load />
+  <IslandErrorBoundary client:load>
+    <Transactions client:load />
+  </IslandErrorBoundary>
 </BaseLayout>

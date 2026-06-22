@@ -4,6 +4,7 @@ import GameCard from "@/components/GameCard.astro";
 import QueryProvider from "@/components/islands/QueryProvider.tsx";
 import JackpotCounter from "@/components/islands/JackpotCounter.tsx";
 import WinnersTicker from "@/components/islands/WinnersTicker.tsx";
+import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/formatters";
 import type { Game } from "@workspace/api-client-react";
@@ -43,9 +44,11 @@ const stats = await apiFetch<CasinoStats>("/api/stats");
         </div>
 
         <div class="mb-8">
-          <QueryProvider client:load>
-            <JackpotCounter client:load initialAmount={stats?.currentJackpot} />
-          </QueryProvider>
+          <IslandErrorBoundary client:load>
+            <QueryProvider client:load>
+              <JackpotCounter client:load initialAmount={stats?.currentJackpot} />
+            </QueryProvider>
+          </IslandErrorBoundary>
         </div>
 
         <h1 class="text-4xl md:text-6xl font-bold text-white mb-6 max-w-3xl tracking-tight leading-tight">
@@ -100,9 +103,11 @@ const stats = await apiFetch<CasinoStats>("/api/stats");
       <div class="flex-1 overflow-hidden relative">
         <div class="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-card to-transparent z-10" />
         <div class="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-card to-transparent z-10" />
-        <QueryProvider client:load>
-          <WinnersTicker client:load winners={winners ?? []} />
-        </QueryProvider>
+        <IslandErrorBoundary client:load>
+          <QueryProvider client:load>
+            <WinnersTicker client:load winners={winners ?? []} />
+          </QueryProvider>
+        </IslandErrorBoundary>
       </div>
     </div>
 
