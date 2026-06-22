@@ -23,6 +23,8 @@ const image = imageUrl || getGameFallbackImage(category);
       <img
         src={image}
         alt={name}
+        loading="lazy"
+        decoding="async"
         class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
       />
       <div class="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />

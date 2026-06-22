@@ -1,9 +1,4 @@
-/**
- * Server-side fetch helper for Astro frontmatter SSR data fetching.
- * Calls the Express API at http://localhost:3000
- */
-
-const API_BASE_URL = "http://localhost:3000";
+import { API_BASE_URL } from "@/lib/config";
 
 export async function apiFetch<T = unknown>(
   path: string,

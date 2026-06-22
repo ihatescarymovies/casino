@@ -24,6 +24,18 @@ export const csrf = {
     : "Path=/; SameSite=Lax; HttpOnly",
 } as const;
 
+const cspDirectives = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https:",
+  `connect-src 'self' ${API_BASE_URL.replace(/^https?:/, "")}`,
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+];
+
 export const securityHeaders: Record<string, string> = {
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
   "X-Frame-Options": "DENY",
@@ -31,17 +43,7 @@ export const securityHeaders: Record<string, string> = {
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-DNS-Prefetch-Control": "on",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self' http://localhost:3000",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; "),
+  "Content-Security-Policy": cspDirectives.join("; "),
 };
 
 export const features = {
