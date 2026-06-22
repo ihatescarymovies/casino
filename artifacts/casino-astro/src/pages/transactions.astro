@@ -1,0 +1,8 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import Transactions from "@/components/islands/Transactions.tsx";
+---
+
+<BaseLayout title="Transaction History — Charter & Oak" description="View your deposits, withdrawals, bets, wins, and bonuses.">
+  <Transactions client:load />
+</BaseLayout>

@@ -118,6 +118,7 @@ export default function GamesFilter({ categories, games }: GamesFilterProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <input
             type="text"
+            aria-label="Search games or providers"
             placeholder="Search games or providers..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

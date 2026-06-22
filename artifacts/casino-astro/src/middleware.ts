@@ -14,7 +14,7 @@ interface AuthUserEnvelope {
   user: AuthUser | null;
 }
 
-const PROTECTED_PATHS = ["/dashboard", "/cashier", "/profile"];
+const PROTECTED_PATHS = ["/dashboard", "/cashier", "/profile", "/transactions"];
 
 async function getAuthUser(request: Request): Promise<AuthUser | null> {
   try {
@@ -33,6 +33,60 @@ async function getAuthUser(request: Request): Promise<AuthUser | null> {
     return null;
   }
 }
+
+// --- Rate limiting (sliding window, per-IP, in-memory) ---
+
+interface RateBucket {
+  timestamps: number[];
+}
+
+const rateLimitStore = new Map<string, RateBucket>();
+
+const PAGE_LIMIT = 60; // requests per minute for page routes
+const API_LIMIT = 30; // requests per minute for /api/ routes
+const WINDOW_MS = 60_000;
+const CLEANUP_INTERVAL_MS = 5 * 60_000;
+let lastCleanup = Date.now();
+
+function getClientIp(request: Request): string {
+  const forwarded = request.headers.get("x-forwarded-for");
+  if (forwarded) return forwarded.split(",")[0].trim();
+
+  const realIp = request.headers.get("x-real-ip");
+  if (realIp) return realIp.trim();
+
+  return "unknown";
+}
+
+function isRateLimited(ip: string, pathname: string): boolean {
+  const isApi = pathname.startsWith("/api/");
+  const limit = isApi ? API_LIMIT : PAGE_LIMIT;
+  const now = Date.now();
+  const key = `${ip}:${isApi ? "api" : "page"}`;
+
+  if (now - lastCleanup > CLEANUP_INTERVAL_MS) {
+    rateLimitStore.forEach((bucket, k) => {
+      bucket.timestamps = bucket.timestamps.filter((t) => now - t < WINDOW_MS);
+      if (bucket.timestamps.length === 0) rateLimitStore.delete(k);
+    });
+    lastCleanup = now;
+  }
+
+  let bucket = rateLimitStore.get(key);
+  if (!bucket) {
+    bucket = { timestamps: [] };
+    rateLimitStore.set(key, bucket);
+  }
+
+  bucket.timestamps = bucket.timestamps.filter((t) => now - t < WINDOW_MS);
+
+  if (bucket.timestamps.length >= limit) return true;
+
+  bucket.timestamps.push(now);
+  return false;
+}
+
+// --- Security headers ---
 
 const SECURITY_HEADERS: Record<string, string> = {
   "X-Frame-Options": "DENY",
@@ -53,11 +107,32 @@ const SECURITY_HEADERS: Record<string, string> = {
   ].join("; "),
 };
 
+// --- Middleware ---
+
 export const onRequest = defineMiddleware(async (context, next) => {
+  const pathname = new URL(context.request.url).pathname;
+
+  const isHealthCheck = pathname === "/api/health";
+  const isStaticAsset =
+    pathname.startsWith("/_astro/") || pathname.startsWith("/favicon");
+
+  if (!isHealthCheck && !isStaticAsset) {
+    const ip = getClientIp(context.request);
+    if (isRateLimited(ip, pathname)) {
+      return new Response("Too Many Requests", {
+        status: 429,
+        headers: {
+          "Retry-After": "60",
+          "Content-Type": "text/plain",
+          ...SECURITY_HEADERS,
+        },
+      });
+    }
+  }
+
   const user = await getAuthUser(context.request);
   context.locals.user = user;
 
-  const pathname = new URL(context.request.url).pathname;
   const isProtected = PROTECTED_PATHS.some(
     (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
