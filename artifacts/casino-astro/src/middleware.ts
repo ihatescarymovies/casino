@@ -1,7 +1,6 @@
 import { defineMiddleware } from "astro:middleware";
 import { randomBytes } from "node:crypto";
-
-const API_BASE_URL = "http://localhost:3000";
+import { API_BASE_URL, rateLimit, csrf, securityHeaders } from "@/lib/config";
 
 function generateTraceId(): string {
   return randomBytes(16).toString("hex");
@@ -63,18 +62,16 @@ async function getAuthUser(request: Request): Promise<AuthUser | null> {
   }
 }
 
-// --- Rate limiting (sliding window, per-IP, in-memory) ---
-
 interface RateBucket {
   timestamps: number[];
 }
 
 const rateLimitStore = new Map<string, RateBucket>();
 
-const PAGE_LIMIT = 60; // requests per minute for page routes
-const API_LIMIT = 30; // requests per minute for /api/ routes
-const WINDOW_MS = 60_000;
-const CLEANUP_INTERVAL_MS = 5 * 60_000;
+const PAGE_LIMIT = rateLimit.pageLimit;
+const API_LIMIT = rateLimit.apiLimit;
+const WINDOW_MS = rateLimit.windowMs;
+const CLEANUP_INTERVAL_MS = rateLimit.cleanupIntervalMs;
 let lastCleanup = Date.now();
 
 function getClientIp(request: Request): string {
@@ -115,11 +112,10 @@ function isRateLimited(ip: string, pathname: string): boolean {
   return false;
 }
 
-// --- CSRF Protection (Double Submit Cookie) ---
-
-const CSRF_COOKIE_NAME = "csrf-token";
-const CSRF_HEADER_NAME = "x-csrf-token";
-const CSRF_TOKEN_LENGTH = 32;
+const CSRF_COOKIE_NAME = csrf.cookieName;
+const CSRF_HEADER_NAME = csrf.headerName;
+const CSRF_TOKEN_LENGTH = csrf.tokenLength;
+const CSRF_COOKIE_ATTRIBUTES = csrf.cookieAttributes;
 
 function generateCsrfToken(): string {
   return randomBytes(CSRF_TOKEN_LENGTH).toString("hex");
@@ -150,28 +146,7 @@ function isMutatingMethod(method: string): boolean {
   return ["POST", "PUT", "DELETE", "PATCH"].includes(method.toUpperCase());
 }
 
-// --- Security headers ---
-
-const SECURITY_HEADERS: Record<string, string> = {
-  "X-Frame-Options": "DENY",
-  "X-Content-Type-Options": "nosniff",
-  "Referrer-Policy": "strict-origin-when-cross-origin",
-  "X-DNS-Prefetch-Control": "on",
-  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
-  "Content-Security-Policy": [
-    "default-src 'self'",
-    "script-src 'self' 'unsafe-inline'",
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https:",
-    "connect-src 'self' http://localhost:3000",
-    "frame-ancestors 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-  ].join("; "),
-};
-
-// --- Middleware ---
+const SECURITY_HEADERS = securityHeaders;
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const pathname = new URL(context.request.url).pathname;
@@ -265,7 +240,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     const csrfToken = generateCsrfToken();
     response.headers.append(
       "Set-Cookie",
-      `${CSRF_COOKIE_NAME}=${csrfToken}; Path=/; SameSite=Lax; HttpOnly`,
+      `${CSRF_COOKIE_NAME}=${csrfToken}; ${CSRF_COOKIE_ATTRIBUTES}`,
     );
   }
 

@@ -1,10 +1,11 @@
 import { useAuth } from "@workspace/replit-auth-web";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   useListGames,
   getListGamesQueryKey,
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
+import { features } from "@/lib/config";
 import {
   Trophy,
   Zap,
@@ -19,8 +20,55 @@ import {
   AlertCircle,
   CircleDot,
   RefreshCw,
+  Heart,
 } from "lucide-react";
 import { getGameFallbackImage } from "@/lib/game-helpers";
+
+const FAVORITES_KEY = "cno-favorites";
+
+function loadFavorites(): Set<string> {
+  try {
+    const raw =
+      typeof window !== "undefined"
+        ? window.localStorage.getItem(FAVORITES_KEY)
+        : null;
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function persistFavorites(favs: Set<string>): void {
+  try {
+    window.localStorage.setItem(
+      FAVORITES_KEY,
+      JSON.stringify(Array.from(favs)),
+    );
+  } catch {}
+}
+
+function useFavorites() {
+  const [favorites, setFavorites] = useState<Set<string>>(() =>
+    loadFavorites(),
+  );
+
+  const toggle = useCallback((gameId: string) => {
+    setFavorites((prev) => {
+      const next = new Set(prev);
+      if (next.has(gameId)) next.delete(gameId);
+      else next.add(gameId);
+      persistFavorites(next);
+      return next;
+    });
+  }, []);
+
+  const isFavorite = useCallback(
+    (gameId: string) => favorites.has(gameId),
+    [favorites],
+  );
+
+  return { favorites, toggle, isFavorite };
+}
 
 interface DepositSession {
   reference_id: string;
@@ -101,6 +149,7 @@ export default function Dashboard() {
   const [isPolling, setIsPolling] = useState(false);
   const depositsRef = useRef<DepositSession[]>([]);
   const { toast } = useToast();
+  const { favorites, toggle: toggleFavorite, isFavorite } = useFavorites();
 
   const { data: hotGames, isLoading: gamesLoading } = useListGames(
     { category: "slots" },
@@ -396,6 +445,65 @@ export default function Dashboard() {
         )}
       </div>
 
+      {/* My Favorites */}
+      {features.favorites && favorites.size > 0 && hotGames && (
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-red-500 fill-red-500" />
+              <h2 className="text-lg font-bold text-white">My Favorites</h2>
+              <span className="text-xs text-muted-foreground">
+                {favorites.size} game{favorites.size !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {hotGames
+              .filter((g) => favorites.has(String(g.id)))
+              .map((game) => (
+                <a
+                  key={game.id}
+                  href={`/games/${game.id}`}
+                  className="group block"
+                >
+                  <div className="casino-card relative overflow-hidden transition-all duration-300 hover:scale-[1.02]">
+                    <div className="aspect-[4/3] w-full overflow-hidden relative">
+                      <img
+                        src={
+                          game.imageUrl || getGameFallbackImage(game.category)
+                        }
+                        alt={game.name}
+                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleFavorite(String(game.id));
+                        }}
+                        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors"
+                        aria-label="Unfavorite"
+                      >
+                        <Heart className="h-4 w-4 fill-red-500 text-red-500" />
+                      </button>
+                      <div className="absolute bottom-0 left-0 w-full p-3">
+                        <p className="text-xs font-semibold text-primary mb-1 uppercase tracking-wider">
+                          {game.category}
+                        </p>
+                        <h3 className="text-sm font-bold text-white leading-tight truncate">
+                          {game.name}
+                        </h3>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Recommended Games */}
       <div>
         <div className="flex items-center justify-between mb-5">
@@ -433,6 +541,36 @@ export default function Dashboard() {
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent opacity-80" />
+                    {features.favorites && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          toggleFavorite(String(game.id));
+                          toast({
+                            title: isFavorite(String(game.id))
+                              ? "Removed from favorites"
+                              : "Added to favorites",
+                            description: game.name,
+                          });
+                        }}
+                        className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-black/40 backdrop-blur-sm hover:bg-black/60 transition-colors"
+                        aria-label={
+                          isFavorite(String(game.id))
+                            ? "Unfavorite"
+                            : "Favorite"
+                        }
+                      >
+                        <Heart
+                          className={`h-4 w-4 transition-colors ${
+                            isFavorite(String(game.id))
+                              ? "fill-red-500 text-red-500"
+                              : "text-white/70 hover:text-white"
+                          }`}
+                        />
+                      </button>
+                    )}
                     <div className="absolute bottom-0 left-0 w-full p-3">
                       <p className="text-xs font-semibold text-primary mb-1 uppercase tracking-wider">
                         {game.category}
