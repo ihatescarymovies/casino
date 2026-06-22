@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search, SlidersHorizontal, X } from "lucide-react";
 import type { Game } from "@workspace/api-client-react";
 import { filterGamesByCategory, filterGamesBySearch } from "@/lib/game-helpers";
 import { getGameFallbackImage } from "@/lib/game-helpers";
@@ -8,6 +8,8 @@ interface GamesFilterProps {
   categories: Array<{ name: string; count: number }>;
   games: Game[];
 }
+
+type SortOption = "name-asc" | "name-desc" | "hot-first" | "new-first";
 
 function GameCardReact({ game }: { game: Game }) {
   const image = game.imageUrl || getGameFallbackImage(game.category);
@@ -66,14 +68,62 @@ function GameCardReact({ game }: { game: Game }) {
 export default function GamesFilter({ categories, games }: GamesFilterProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [selectedProvider, setSelectedProvider] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("name-asc");
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const filteredGames = filterGamesBySearch(
-    filterGamesByCategory(games, selectedCategory),
-    searchQuery,
-  );
+  useEffect(() => {
+    clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(searchQuery), 200);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchQuery]);
+
+  const providers = useMemo(() => {
+    const unique = Array.from(new Set(games.map((g) => g.provider)));
+    return unique.sort();
+  }, [games]);
+
+  const filteredGames = useMemo(() => {
+    let filtered = filterGamesBySearch(
+      filterGamesByCategory(games, selectedCategory),
+      debouncedQuery,
+    );
+
+    if (selectedProvider !== "all") {
+      filtered = filtered.filter((g) => g.provider === selectedProvider);
+    }
+
+    switch (sortBy) {
+      case "name-asc":
+        return filtered.sort((a, b) => a.name.localeCompare(b.name));
+      case "name-desc":
+        return filtered.sort((a, b) => b.name.localeCompare(a.name));
+      case "hot-first":
+        return filtered.sort((a, b) => (b.isHot ? 1 : 0) - (a.isHot ? 1 : 0));
+      case "new-first":
+        return filtered.sort((a, b) => (b.isNew ? 1 : 0) - (a.isNew ? 1 : 0));
+      default:
+        return filtered;
+    }
+  }, [games, selectedCategory, debouncedQuery, selectedProvider, sortBy]);
+
+  const hasActiveFilters =
+    selectedCategory !== "all" ||
+    searchQuery !== "" ||
+    selectedProvider !== "all" ||
+    sortBy !== "name-asc";
+
+  function clearAllFilters() {
+    setSelectedCategory("all");
+    setSearchQuery("");
+    setDebouncedQuery("");
+    setSelectedProvider("all");
+    setSortBy("name-asc");
+  }
 
   return (
-    <div className="acsino-lobby flex flex-col lg:flex-row gap-8">
+    <div className="casino-lobby flex flex-col lg:flex-row gap-8">
       {/* Sidebar */}
       <aside className="lg:w-64 shrink-0">
         <div className="sticky top-24 flex flex-col gap-2">
@@ -113,18 +163,78 @@ export default function GamesFilter({ categories, games }: GamesFilterProps) {
 
       {/* Main Grid */}
       <main className="flex-1">
-        {/* Search */}
-        <div className="relative w-full md:w-72 mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            aria-label="Search games or providers"
-            placeholder="Search games or providers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-card/50 border border-white/10 rounded-md text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary h-12"
-          />
+        {/* Search + Filters Row */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              aria-label="Search games or providers"
+              placeholder="Search games or providers..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 bg-card/50 border border-white/10 rounded-md text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary h-12"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setDebouncedQuery("");
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white"
+                aria-label="Clear search"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <select
+            aria-label="Filter by provider"
+            value={selectedProvider}
+            onChange={(e) => setSelectedProvider(e.target.value)}
+            className="h-12 px-4 bg-card/50 border border-white/10 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer min-w-[140px]"
+          >
+            <option value="all">All Providers</option>
+            {providers.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+
+          <div className="relative">
+            <SlidersHorizontal className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <select
+              aria-label="Sort games"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortOption)}
+              className="h-12 pl-10 pr-4 bg-card/50 border border-white/10 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer min-w-[140px]"
+            >
+              <option value="name-asc">Name A–Z</option>
+              <option value="name-desc">Name Z–A</option>
+              <option value="hot-first">Hot First</option>
+              <option value="new-first">New First</option>
+            </select>
+          </div>
         </div>
+
+        {/* Active filter count + clear */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-2 mb-4 text-sm">
+            <span className="text-muted-foreground">
+              {filteredGames.length} game{filteredGames.length !== 1 ? "s" : ""}
+            </span>
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="text-primary hover:text-primary/80 underline underline-offset-2"
+            >
+              Clear all filters
+            </button>
+          </div>
+        )}
 
         {filteredGames.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -142,10 +252,7 @@ export default function GamesFilter({ categories, games }: GamesFilterProps) {
             </p>
             <button
               type="button"
-              onClick={() => {
-                setSearchQuery("");
-                setSelectedCategory("all");
-              }}
+              onClick={clearAllFilters}
               className="btn btn-secondary"
             >
               Clear Filters

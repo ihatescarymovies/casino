@@ -1,6 +1,35 @@
 import { defineMiddleware } from "astro:middleware";
+import { randomBytes } from "node:crypto";
 
 const API_BASE_URL = "http://localhost:3000";
+
+function generateTraceId(): string {
+  return randomBytes(16).toString("hex");
+}
+
+interface RequestLog {
+  traceId: string;
+  method: string;
+  pathname: string;
+  ip: string;
+  userId?: string;
+  status: number;
+  durationMs: number;
+  rateLimited: boolean;
+  csrfRejected: boolean;
+}
+
+function logRequest(entry: RequestLog): void {
+  const level =
+    entry.status >= 500 ? "ERROR" : entry.status >= 400 ? "WARN" : "INFO";
+  console.log(
+    JSON.stringify({
+      level,
+      timestamp: new Date().toISOString(),
+      ...entry,
+    }),
+  );
+}
 
 export interface AuthUser {
   id: string;
@@ -86,6 +115,41 @@ function isRateLimited(ip: string, pathname: string): boolean {
   return false;
 }
 
+// --- CSRF Protection (Double Submit Cookie) ---
+
+const CSRF_COOKIE_NAME = "csrf-token";
+const CSRF_HEADER_NAME = "x-csrf-token";
+const CSRF_TOKEN_LENGTH = 32;
+
+function generateCsrfToken(): string {
+  return randomBytes(CSRF_TOKEN_LENGTH).toString("hex");
+}
+
+function validateCsrfToken(request: Request): boolean {
+  const cookieHeader = request.headers.get("cookie") ?? "";
+  const cookieToken = cookieHeader
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith(`${CSRF_COOKIE_NAME}=`))
+    ?.split("=")[1];
+
+  const headerToken = request.headers.get(CSRF_HEADER_NAME);
+
+  if (!cookieToken || !headerToken) return false;
+
+  // Constant-time comparison to prevent timing attacks
+  if (cookieToken.length !== headerToken.length) return false;
+  let mismatch = 0;
+  for (let i = 0; i < cookieToken.length; i++) {
+    mismatch |= cookieToken.charCodeAt(i) ^ headerToken.charCodeAt(i);
+  }
+  return mismatch === 0;
+}
+
+function isMutatingMethod(method: string): boolean {
+  return ["POST", "PUT", "DELETE", "PATCH"].includes(method.toUpperCase());
+}
+
 // --- Security headers ---
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -111,21 +175,58 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const pathname = new URL(context.request.url).pathname;
+  const method = context.request.method;
+  const traceId = generateTraceId();
+  const startTime = Date.now();
+  const ip = getClientIp(context.request);
 
   const isHealthCheck = pathname === "/api/health";
   const isStaticAsset =
     pathname.startsWith("/_astro/") || pathname.startsWith("/favicon");
 
+  let rateLimited = false;
   if (!isHealthCheck && !isStaticAsset) {
-    const ip = getClientIp(context.request);
     if (isRateLimited(ip, pathname)) {
+      rateLimited = true;
+      logRequest({
+        traceId,
+        method,
+        pathname,
+        ip,
+        status: 429,
+        durationMs: Date.now() - startTime,
+        rateLimited,
+        csrfRejected: false,
+      });
       return new Response("Too Many Requests", {
         status: 429,
         headers: {
           "Retry-After": "60",
           "Content-Type": "text/plain",
+          "X-Trace-Id": traceId,
           ...SECURITY_HEADERS,
         },
+      });
+    }
+  }
+
+  let csrfRejected = false;
+  if (isMutatingMethod(method) && pathname.startsWith("/api/")) {
+    if (!validateCsrfToken(context.request)) {
+      csrfRejected = true;
+      logRequest({
+        traceId,
+        method,
+        pathname,
+        ip,
+        status: 403,
+        durationMs: Date.now() - startTime,
+        rateLimited: false,
+        csrfRejected,
+      });
+      return new Response(JSON.stringify({ error: "Invalid CSRF token" }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", "X-Trace-Id": traceId },
       });
     }
   }
@@ -138,6 +239,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   );
 
   if (isProtected && !user) {
+    logRequest({
+      traceId,
+      method,
+      pathname,
+      ip,
+      status: 302,
+      durationMs: Date.now() - startTime,
+      rateLimited: false,
+      csrfRejected: false,
+    });
     return context.redirect(
       `/api/login?returnTo=${encodeURIComponent(pathname)}`,
     );
@@ -147,6 +258,29 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
     response.headers.set(key, value);
+  }
+  response.headers.set("X-Trace-Id", traceId);
+
+  if (!isMutatingMethod(method)) {
+    const csrfToken = generateCsrfToken();
+    response.headers.append(
+      "Set-Cookie",
+      `${CSRF_COOKIE_NAME}=${csrfToken}; Path=/; SameSite=Lax; HttpOnly`,
+    );
+  }
+
+  if (!isStaticAsset && !isHealthCheck) {
+    logRequest({
+      traceId,
+      method,
+      pathname,
+      ip,
+      userId: user?.id,
+      status: response.status,
+      durationMs: Date.now() - startTime,
+      rateLimited,
+      csrfRejected,
+    });
   }
 
   return response;

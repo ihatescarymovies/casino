@@ -32,6 +32,11 @@ beforeEach(() => {
     ok: true,
     json: () => Promise.resolve({}), // No redirect URL → success state
   });
+  // Mock CSRF cookie for CSRF token reading
+  Object.defineProperty(document, "cookie", {
+    writable: true,
+    value: "csrf-token=test-csrf-token-1234567890abcdef1234567890abcdef",
+  });
 });
 
 afterEach(() => {

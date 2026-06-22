@@ -109,9 +109,18 @@ export default function Cashier() {
     setError(null);
 
     try {
+      const csrfToken = document.cookie
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("csrf-token="))
+        ?.split("=")[1];
+
       const res = await fetch("/api/payments/checkout", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        },
         credentials: "include",
         body: JSON.stringify({
           amount: selectedAmount,
