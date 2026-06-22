@@ -5,13 +5,16 @@ import SiteFooter from "@/components/SiteFooter.astro";
 interface Props {
   title?: string;
   description?: string;
+  image?: string;
 }
 
 const {
   title = "Charter & Oak — Premium Online Casino",
   description = "Experience world-class gaming at Charter & Oak Casino. Slots, table games, live dealers, and more.",
+  image = "/og-image.jpg",
 } = Astro.props;
 
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? "http://localhost:4321");
 const currentPath = Astro.url.pathname;
 const user = Astro.locals.user as {
   firstName?: string;
@@ -37,11 +40,20 @@ import "@/styles/global.css"
       rel="stylesheet"
     />
     <title>{title}</title>
+    <link rel="canonical" href={canonicalURL.href} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalURL.href} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={image} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
   </head>
   <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <SiteHeader currentPath={currentPath} user={user} isAuthenticated={isAuthenticated} />
-    <main id="main-content" class="flex-1 w-full flex flex-col">
+    <main id="main-content" aria-label="Main content" class="flex-1 w-full flex flex-col">
       <slot />
     </main>
     <SiteFooter />
