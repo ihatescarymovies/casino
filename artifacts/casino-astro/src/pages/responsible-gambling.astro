@@ -1,0 +1,238 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+interface Tool {
+  title: string;
+  description: string;
+  icon: string;
+}
+
+interface Resource {
+  name: string;
+  phone: string;
+  description: string;
+  url?: string;
+}
+
+const selfExclusionTools: Tool[] = [
+  {
+    title: "Temporary 24-Hour",
+    description:
+      "Take a short break with a 24-hour cooling-off period. Your account will be temporarily suspended and all marketing communications will stop.",
+    icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
+  {
+    title: "7-Day Pause",
+    description:
+      "A one-week break to reassess your play. During this time, you cannot log in, deposit, or receive promotional offers.",
+    icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+  },
+  {
+    title: "30-Day Self-Exclusion",
+    description:
+      "A full month away from the platform. This is ideal if you feel your gambling is becoming problematic and need extended time off.",
+    icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4",
+  },
+  {
+    title: "Permanent Exclusion",
+    description:
+      "Permanently close your account and block access to all Charter & Oak services. This action is irreversible and includes removal from all marketing lists.",
+    icon: "M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z",
+  },
+];
+
+const depositLimits: Tool[] = [
+  {
+    title: "Daily Limits",
+    description:
+      "Set a maximum deposit amount per day. Once reached, no further deposits can be made until the next calendar day.",
+    icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
+  {
+    title: "Weekly Limits",
+    description:
+      "Control your spending over a 7-day rolling period. Adjustments take effect immediately and can be lowered at any time.",
+    icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+  },
+  {
+    title: "Monthly Limits",
+    description:
+      "Set a monthly cap on total deposits. Increases require a 24-hour cooling-off period to prevent impulsive decisions.",
+    icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+  },
+];
+
+const sessionTools: Tool[] = [
+  {
+    title: "Time Reminders",
+    description:
+      "Receive on-screen notifications after every 30 minutes of active play, showing your total session duration.",
+    icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
+  {
+    title: "Reality Check",
+    description:
+      "Periodic pop-ups display your net win/loss and time spent, helping you make informed decisions about continuing to play.",
+    icon: "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+  },
+  {
+    title: "Auto-Logout",
+    description:
+      "Automatically log out after a set period of inactivity. You can customize the timeout duration in your account settings.",
+    icon: "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1",
+  },
+];
+
+const resources: Resource[] = [
+  {
+    name: "Ohio Problem Gambling Helpline",
+    phone: "1-800-589-9966",
+    description: "Free, confidential support available 24/7 for Ohio residents.",
+    url: "https://ohioproblemgambling.org",
+  },
+  {
+    name: "National Problem Gambling Helpline",
+    phone: "1-800-522-4700",
+    description: "Confidential helpline available nationwide, 24 hours a day.",
+    url: "https://ncpgambling.org",
+  },
+  {
+    name: "National Council on Problem Gambling (NCPG)",
+    phone: "1-800-522-4700",
+    description: "The national advocate for programs and services to assist problem addiction.",
+    url: "https://ncpgambling.org",
+  },
+  {
+    name: "Gamblers Anonymous",
+    phone: "Find a local meeting at gamblersanonymous.org",
+    description: "Twelve-step fellowship of men and women who share their experience to help others recover.",
+    url: "https://gamblersanonymous.org",
+  },
+];
+---
+
+<BaseLayout
+  title="Responsible Gambling — Charter & Oak"
+  description="Charter & Oak is committed to responsible gaming. Learn about self-exclusion, deposit limits, and resources for problem gambling support."
+>
+  <main id="main-content" class="container mx-auto px-4 py-12 flex flex-col gap-16">
+    {/* Hero */}
+    <div class="text-center max-w-3xl mx-auto">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+        Responsible Gambling
+      </h1>
+      <p class="text-xl text-muted-foreground">
+        Your well-being matters. We provide tools and resources to help you stay in control of your play.
+      </p>
+    </div>
+
+    {/* Self-Exclusion */}
+    <section class="flex flex-col gap-6">
+      <div class="border-b border-white/10 pb-4">
+        <h2 class="text-2xl font-bold text-white">Self-Exclusion Options</h2>
+        <p class="text-muted-foreground mt-1">
+          Take control of your gambling with flexible exclusion periods.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {selfExclusionTools.map((tool) => (
+          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={tool.icon} />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-white">{tool.title}</h3>
+            </div>
+            <p class="text-muted-foreground text-sm leading-1.6">{tool.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {/* Deposit Limits */}
+    <section class="flex flex-col gap-6">
+      <div class="border-b border-white/10 pb-4">
+        <h2 class="text-2xl font-bold text-white">Deposit Limits</h2>
+        <p class="text-muted-foreground mt-1">
+          Set boundaries on how much you can deposit over time.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {depositLimits.map((tool) => (
+          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={tool.icon} />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-white">{tool.title}</h3>
+            </div>
+            <p class="text-muted-foreground text-sm leading-1.6">{tool.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {/* Session Limits & Reality Check */}
+    <section class="flex flex-col gap-6">
+      <div class="border-b border-white/10 pb-4">
+        <h2 class="text-2xl font-bold text-white">Session Limits & Reality Checks</h2>
+        <p class="text-muted-foreground mt-1">
+          Stay aware of your time and spending with automatic reminders.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {sessionTools.map((tool) => (
+          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+            <div class="flex items-center gap-3">
+              <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={tool.icon} />
+                </svg>
+              </div>
+              <h3 class="text-lg font-semibold text-white">{tool.title}</h3>
+            </div>
+            <p class="text-muted-foreground text-sm leading-1.6">{tool.description}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+
+    {/* Resources */}
+    <section class="flex flex-col gap-6">
+      <div class="border-b border-white/10 pb-4">
+        <h2 class="text-2xl font-bold text-white">Resources & Support</h2>
+        <p class="text-muted-foreground mt-1">
+          If you or someone you know is struggling with gambling, help is available.
+        </p>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {resources.map((resource) => (
+          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+            <h3 class="text-lg font-semibold text-white">{resource.name}</h3>
+            <p class="text-muted-foreground text-sm">{resource.description}</p>
+            <div class="flex flex-col gap-1 mt-1">
+              <span class="text-sm font-medium text-primary">{resource.phone}</span>
+              {resource.url && (
+                <a
+                  href={resource.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1"
+                >
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  {resource.url}
+                </a>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  </main>
+</BaseLayout>
