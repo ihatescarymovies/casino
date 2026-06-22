@@ -1,0 +1,61 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { apiFetch } from "@/lib/api";
+import { formatCurrency, formatTimeAgo } from "@/lib/formatters";
+
+type Winner = {
+  id: number;
+  playerName: string;
+  gameName: string;
+  winAmount: number;
+  timestamp: string;
+};
+
+const winners = await apiFetch<Winner[]>("/api/winners?limit=50");
+---
+
+<BaseLayout title="Hall of Winners — Charter & Oak" description="Real players. Real money. See the latest big wins at Charter & Oak Casino.">
+  <main id="main-content" class="container mx-auto px-4 py-12 flex flex-col gap-12 max-w-5xl">
+    <div class="text-center">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">Hall of Winners</h1>
+      <p class="text-xl text-muted-foreground">Real players. Real money. Are you next?</p>
+    </div>
+
+    <div class="bg-card border border-white/5 rounded-2xl overflow-hidden">
+      <div class="grid grid-cols-12 gap-4 p-6 border-b border-white/10 bg-black/40 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+        <div class="col-span-5 md:col-span-4">Player</div>
+        <div class="col-span-4 hidden md:block">Game</div>
+        <div class="col-span-4 md:col-span-2 text-right">Win Amount</div>
+        <div class="col-span-3 md:col-span-2 text-right hidden sm:block">Time</div>
+      </div>
+
+      <div class="divide-y divide-white/5">
+        {winners && winners.length > 0 ? (
+          winners.map((winner) => (
+            <div class="grid grid-cols-12 gap-4 p-6 items-center hover:bg-white/[0.02] transition-colors">
+              <div class="col-span-7 sm:col-span-5 md:col-span-4 flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold border border-primary/30 flex-shrink-0">
+                  {winner.playerName.charAt(0).toUpperCase()}
+                </div>
+                <span class="font-bold text-white truncate">{winner.playerName}</span>
+              </div>
+              <div class="col-span-4 hidden md:flex items-center">
+                <span class="text-muted-foreground truncate">{winner.gameName}</span>
+              </div>
+              <div class="col-span-5 sm:col-span-4 md:col-span-2 text-right">
+                <span class="text-xl font-bold text-primary drop-shadow-[0_0_5px_rgba(234,179,8,0.3)]">
+                  {formatCurrency(winner.winAmount)}
+                </span>
+              </div>
+              <div class="col-span-3 md:col-span-2 text-right hidden sm:block">
+                <span class="text-sm text-muted-foreground">{formatTimeAgo(winner.timestamp)}</span>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div class="p-12 text-center text-muted-foreground">No recent winners found.</div>
+        )}
+      </div>
+    </div>
+  </main>
+</BaseLayout>

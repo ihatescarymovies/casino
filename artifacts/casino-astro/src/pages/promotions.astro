@@ -1,0 +1,47 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PromotionCard from "@/components/PromotionCard.astro";
+import { apiFetch } from "@/lib/api";
+
+type Promotion = {
+  id: number;
+  title: string;
+  description: string;
+  type: string;
+  bonusAmount: string;
+  imageUrl: string;
+  isHighlighted: boolean;
+};
+
+const promotions = await apiFetch<Promotion[]>("/api/promotions");
+---
+
+<BaseLayout title="VIP Rewards & Promotions — Charter & Oak" description="Maximize your action with the best casino bonuses, reload offers, and exclusive VIP perks.">
+  <main id="main-content" class="container mx-auto px-4 py-12 flex flex-col gap-12">
+    <div class="text-center max-w-3xl mx-auto mb-8">
+      <h1 class="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">VIP Rewards &amp; Promotions</h1>
+      <p class="text-xl text-muted-foreground">Maximize your action with the best casino bonuses, reload offers, and exclusive VIP perks.</p>
+    </div>
+
+    {promotions && promotions.length > 0 ? (
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {promotions.map((promo) => (
+          <PromotionCard
+            id={promo.id}
+            title={promo.title}
+            description={promo.description}
+            type={promo.type}
+            bonusAmount={promo.bonusAmount}
+            imageUrl={promo.imageUrl}
+            isHighlighted={promo.isHighlighted}
+          />
+        ))}
+      </div>
+    ) : (
+      <div class="py-24 text-center border border-white/5 rounded-xl bg-card/30 border-dashed">
+        <h3 class="text-2xl font-bold text-white mb-2">No active promotions</h3>
+        <p class="text-muted-foreground">Check back later for new offers.</p>
+      </div>
+    )}
+  </main>
+</BaseLayout>

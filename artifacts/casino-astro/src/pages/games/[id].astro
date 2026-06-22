@@ -1,0 +1,149 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import GameCard from "@/components/GameCard.astro";
+import { apiFetch } from "@/lib/api";
+import { formatCurrency } from "@/lib/formatters";
+import { getGameFallbackImage } from "@/lib/game-helpers";
+import type { Game } from "@workspace/api-client-react";
+
+const { id } = Astro.params;
+const gameId = parseInt(id || "0", 10);
+
+const game = await apiFetch<{
+  id: number;
+  name: string;
+  category: string;
+  provider: string;
+  imageUrl: string;
+  isFeatured: boolean;
+  isHot: boolean;
+  isNew: boolean;
+  description: string | null;
+  jackpotAmount: number | null;
+  rtp: number;
+  minBet: number | null;
+  maxBet: number | null;
+}>(`/api/games/${gameId}`);
+
+let relatedGames: Game[] | null = null;
+
+if (game) {
+  relatedGames = await apiFetch(`/api/games?category=${game.category}`);
+}
+
+const image = game?.imageUrl || getGameFallbackImage(game?.category);
+---
+
+<BaseLayout title={game ? `${game.name} — Charter & Oak` : "Game Not Found — Charter & Oak"} description={game?.description || "Game details and play options."}>
+  <main id="main-content" class="container mx-auto px-4 py-12 flex flex-col gap-12">
+    {game ? (
+      <>
+        <div class="flex items-center gap-2 text-sm text-muted-foreground">
+          <a href="/games" class="hover:text-white transition-colors">Games</a>
+          <span>/</span>
+          <span class="capitalize">{game.category}</span>
+          <span>/</span>
+          <span class="text-white font-medium">{game.name}</span>
+        </div>
+
+        <div class="flex flex-col lg:flex-row gap-12">
+          <div class="lg:w-2/3 flex flex-col gap-6">
+            <div class="relative aspect-[16/9] bg-black rounded-2xl overflow-hidden border border-white/10 group flex items-center justify-center">
+              <img src={image} alt={game.name} class="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px]" />
+              <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+
+              <div class="relative z-10 flex flex-col items-center text-center p-6 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl max-w-md w-full">
+                <h2 class="text-3xl font-bold text-white mb-2">{game.name}</h2>
+                <p class="text-primary font-medium mb-8 uppercase tracking-wider">{game.provider}</p>
+
+                <button type="button" class="w-full btn btn-primary text-xl h-16 shadow-[0_0_30px_rgba(234,179,8,0.5)]">
+                  PLAY FOR REAL
+                </button>
+                <button type="button" class="w-full btn btn-ghost mt-2 text-muted-foreground hover:text-white">
+                  Try Demo Version
+                </button>
+              </div>
+            </div>
+
+            <div class="prose prose-invert max-w-none">
+              <h3 class="text-xl font-bold text-white mb-4">About {game.name}</h3>
+              <p class="text-muted-foreground leading-relaxed">
+                {game.description || `Experience the thrill of ${game.name}, a premium ${game.category} game by ${game.provider}. Featuring stunning graphics, smooth gameplay, and exciting mechanics designed for high rollers.`}
+              </p>
+            </div>
+          </div>
+
+          <aside class="lg:w-1/3 flex flex-col gap-6">
+            <div class="bg-card border border-white/5 rounded-2xl p-6 flex flex-col gap-6">
+              <div>
+                <div class="flex flex-wrap gap-2 mb-4">
+                  {game.isHot && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-destructive text-destructive-foreground shadow-[0_0_10px_rgba(220,38,38,0.8)] border-none">HOT</span>}
+                  {game.isNew && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.8)] border-none">NEW</span>}
+                  {game.isFeatured && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-primary text-primary-foreground shadow-[0_0_10px_rgba(234,179,8,0.8)] border-none">FEATURED</span>}
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border border-white/10 uppercase tracking-wider text-muted-foreground">{game.category}</span>
+                </div>
+
+                <h1 class="text-4xl font-black text-white tracking-tight mb-2">{game.name}</h1>
+                <p class="text-lg text-muted-foreground">by {game.provider}</p>
+              </div>
+
+              {game.jackpotAmount && (
+                <div class="bg-black/50 border border-primary/30 rounded-xl p-4 text-center">
+                  <span class="block text-xs font-bold text-primary uppercase tracking-widest mb-1">Current Jackpot</span>
+                  <span class="block text-3xl font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
+                    {formatCurrency(game.jackpotAmount)}
+                  </span>
+                </div>
+              )}
+
+              <div class="grid grid-cols-2 gap-4">
+                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                  <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">RTP</span>
+                  <span class="block text-xl font-bold text-white">{game.rtp}%</span>
+                </div>
+                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                  <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Volatility</span>
+                  <span class="block text-xl font-bold text-white">High</span>
+                </div>
+                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                  <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Min Bet</span>
+                  <span class="block text-xl font-bold text-white">{game.minBet ? formatCurrency(game.minBet) : '$1'}</span>
+                </div>
+                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                  <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Max Bet</span>
+                  <span class="block text-xl font-bold text-white">{game.maxBet ? formatCurrency(game.maxBet) : '$5,000'}</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+
+        {relatedGames && relatedGames.length > 0 && (
+          <section class="pt-12 border-t border-white/10 mt-12">
+            <h2 class="text-2xl font-bold text-white mb-8">More {game.category} Games</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {relatedGames.filter(g => g.id !== game.id).slice(0, 4).map(relatedGame => (
+                <GameCard
+                  id={relatedGame.id}
+                  name={relatedGame.name}
+                  category={relatedGame.category}
+                  provider={relatedGame.provider}
+                  imageUrl={relatedGame.imageUrl}
+                  isFeatured={relatedGame.isFeatured}
+                  isHot={relatedGame.isHot}
+                  isNew={relatedGame.isNew}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+      </>
+    ) : (
+      <div class="text-center py-32 flex flex-col items-center justify-center">
+        <h2 class="text-2xl font-bold text-white mb-4">Game Not Found</h2>
+        <p class="text-muted-foreground mb-8">The game you're looking for doesn't exist or is currently unavailable.</p>
+        <a href="/games" class="btn btn-primary">Back to Games</a>
+      </div>
+    )}
+  </main>
+</BaseLayout>

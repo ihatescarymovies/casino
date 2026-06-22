@@ -1,0 +1,19 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+---
+
+<BaseLayout title="Page Not Found — Charter & Oak" description="The page you're looking for doesn't exist.">
+  <main id="main-content" class="min-h-[60vh] flex items-center justify-center">
+    <div class="text-center">
+      <h1 class="font-display text-8xl font-bold text-primary/30 mb-4">404</h1>
+      <p class="text-2xl text-white mb-2">Page not found</p>
+      <p class="text-muted-foreground mb-8">The page you're looking for doesn't exist or has been moved.</p>
+      <a
+        href="/"
+        class="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+      >
+        Back to Home
+      </a>
+    </div>
+  </main>
+</BaseLayout>
