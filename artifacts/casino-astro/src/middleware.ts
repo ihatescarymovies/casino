@@ -14,7 +14,7 @@ interface AuthUserEnvelope {
   user: AuthUser | null;
 }
 
-const PROTECTED_PATHS = ["/dashboard", "/cashier"];
+const PROTECTED_PATHS = ["/dashboard", "/cashier", "/profile"];
 
 async function getAuthUser(request: Request): Promise<AuthUser | null> {
   try {
