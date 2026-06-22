@@ -47,3 +47,15 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+.replit
+.replitignore
+replit.md
+**/.replit-artifact/
+
+# OpenCode / oh-my-openagent
+.omo/
+
+# Environment
+.env
+.env.*
+!.env.example
