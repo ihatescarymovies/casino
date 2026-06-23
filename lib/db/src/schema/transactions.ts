@@ -1,15 +1,21 @@
-import { pgTable, serial, integer, varchar, timestamp } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  integer,
+  varchar,
+  timestamp,
+} from "drizzle-orm/pg-core";
 import { walletsTable } from "./wallets";
-import { usersTable } from "./users";
+import { usersTable as authUsersTable } from "./auth";
 
 export const transactionsTable = pgTable("transactions", {
   id: serial("id").primaryKey(),
   walletId: integer("wallet_id")
     .notNull()
     .references(() => walletsTable.id),
-  userId: integer("user_id")
+  userId: varchar("user_id")
     .notNull()
-    .references(() => usersTable.id),
+    .references(() => authUsersTable.id),
   type: varchar("type", { length: 20 }).notNull(),
   amount: integer("amount").notNull(),
   balanceBefore: integer("balance_before").notNull(),
