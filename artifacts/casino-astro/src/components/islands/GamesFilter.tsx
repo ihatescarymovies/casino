@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, SlidersHorizontal, X } from "lucide-react";
+import { useGetWallet } from "@workspace/api-client-react";
 import type { Game } from "@workspace/api-client-react";
 import { filterGamesByCategory, filterGamesBySearch } from "@/lib/game-helpers";
 import { getGameFallbackImage } from "@/lib/game-helpers";
@@ -11,8 +12,23 @@ interface GamesFilterProps {
 
 type SortOption = "name-asc" | "name-desc" | "hot-first" | "new-first";
 
+function formatCents(cents: number): string {
+  return `$${(cents / 100).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function GameCardReact({ game }: { game: Game }) {
+  const { data: wallet, isLoading: walletLoading } = useGetWallet();
   const image = game.imageUrl || getGameFallbackImage(game.category);
+
+  const balanceLabel = walletLoading
+    ? "Balance loading..."
+    : wallet
+      ? `Balance ${formatCents(wallet.balance)}`
+      : "Balance unavailable";
+
   return (
     <a href={`/games/${game.id}`} className="group block">
       <div className="casino-card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-primary/50 cursor-pointer">
@@ -54,10 +70,22 @@ function GameCardReact({ game }: { game: Game }) {
             </p>
           </div>
 
-          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 bg-black/40 backdrop-blur-[2px]">
-            <div className="bg-primary text-primary-foreground font-bold px-6 py-2 rounded-full transform scale-90 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_20px_rgba(234,179,8,0.6)]">
-              PLAY NOW
+          <div className="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 bg-black/40 backdrop-blur-[2px] gap-3">
+            <div className="flex flex-col items-center gap-1">
+              <a
+                href={`/games/${game.id}?mode=real`}
+                className="bg-primary text-primary-foreground font-bold px-6 py-2 rounded-full transform scale-90 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_20px_rgba(234,179,8,0.6)] text-sm"
+              >
+                PLAY NOW
+              </a>
+              <span className="text-[11px] text-white/80">{balanceLabel}</span>
             </div>
+            <a
+              href={`/games/${game.id}?mode=demo`}
+              className="bg-white/10 text-white font-bold px-6 py-2 rounded-full transform scale-90 group-hover:scale-100 transition-transform duration-300 border border-white/20 hover:bg-white/20 text-sm"
+            >
+              FREE PLAY
+            </a>
           </div>
         </div>
       </div>

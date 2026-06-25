@@ -19,6 +19,14 @@ tags:
     description: Player account
   - name: Auth
     description: Browser and mobile authentication endpoints.
+  - name: rounds
+    description: Game rounds and betting
+  - name: wallet
+    description: Player wallet and transactions
+  - name: events
+    description: Server-sent events
+  - name: hash-chain
+    description: Provably fair hash chain
 
 paths:
   /healthz:
@@ -33,6 +41,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+              example:
+                status: "ok"
 
   /games:
     get:
@@ -59,6 +69,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Game"
+              example:
+                - id: 1
+                  name: "Diamond Rush"
+                  category: "slots"
+                  provider: "NetEnt"
+                  rtp: 0.96
+                  minBet: 100
+                  maxBet: 100000
+                  imageUrl: "/games/diamond-rush.jpg"
+                  isFeatured: true
+                  isHot: false
+                  isNew: true
+                  description: "A dazzling slot adventure"
+                  jackpotAmount: 5000000
 
   /games/{id}:
     get:
@@ -78,6 +102,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Game"
+              example:
+                id: 1
+                name: "Diamond Rush"
+                category: "slots"
+                provider: "NetEnt"
+                rtp: 0.96
+                minBet: 100
+                maxBet: 100000
+                imageUrl: "/games/diamond-rush.jpg"
+                isFeatured: true
+                isHot: false
+                isNew: true
+                description: "A dazzling slot adventure"
+                jackpotAmount: 5000000
         "404":
           description: Not found
 
@@ -95,6 +133,16 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/GameCategory"
+              example:
+                - name: "slots"
+                  count: 42
+                  iconName: "Zap"
+                - name: "blackjack"
+                  count: 8
+                  iconName: "Layers"
+                - name: "roulette"
+                  count: 5
+                  iconName: "Circle"
 
   /games/featured:
     get:
@@ -110,6 +158,20 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Game"
+              example:
+                - id: 1
+                  name: "Diamond Rush"
+                  category: "slots"
+                  provider: "NetEnt"
+                  rtp: 0.96
+                  minBet: 100
+                  maxBet: 100000
+                  imageUrl: "/games/diamond-rush.jpg"
+                  isFeatured: true
+                  isHot: false
+                  isNew: true
+                  description: "A dazzling slot adventure"
+                  jackpotAmount: 5000000
 
   /promotions:
     get:
@@ -125,6 +187,16 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Promotion"
+              example:
+                - id: 1
+                  title: "Welcome Bonus"
+                  description: "100% match on your first deposit up to $500"
+                  type: "welcome"
+                  bonusAmount: "$500"
+                  wagerRequirement: 30
+                  expiresAt: "2025-12-31T23:59:59Z"
+                  imageUrl: "/promotions/welcome.jpg"
+                  isHighlighted: true
 
   /promotions/{id}:
     get:
@@ -144,6 +216,16 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Promotion"
+              example:
+                id: 1
+                title: "Welcome Bonus"
+                description: "100% match on your first deposit up to $500"
+                type: "welcome"
+                bonusAmount: "$500"
+                wagerRequirement: 30
+                expiresAt: "2025-12-31T23:59:59Z"
+                imageUrl: "/promotions/welcome.jpg"
+                isHighlighted: true
 
   /winners:
     get:
@@ -165,6 +247,19 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Winner"
+              example:
+                - id: 1
+                  playerName: "LuckyPlayer7"
+                  gameName: "Diamond Rush"
+                  winAmount: 250000
+                  timestamp: "2025-06-23T14:30:00Z"
+                  avatarUrl: "/avatars/luckyplayer7.jpg"
+                - id: 2
+                  playerName: "HighRoller99"
+                  gameName: "Mega Blackjack"
+                  winAmount: 180000
+                  timestamp: "2025-06-23T13:15:00Z"
+                  avatarUrl: null
 
   /auth/user:
     get:
@@ -172,15 +267,22 @@ paths:
       operationId: getCurrentAuthUser
       summary: Get the currently authenticated user
       parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
-        - $ref: '#/components/parameters/SessionCookie'
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
       responses:
-        '200':
+        "200":
           description: Auth status resolved successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthUserEnvelope'
+                $ref: "#/components/schemas/AuthUserEnvelope"
+              example:
+                user:
+                  id: "user_123"
+                  email: "player@example.com"
+                  firstName: "John"
+                  lastName: "Doe"
+                  profileImageUrl: "https://example.com/avatar.jpg"
   /login:
     get:
       tags: [Auth]
@@ -193,7 +295,7 @@ paths:
           schema:
             type: string
       responses:
-        '302':
+        "302":
           description: Redirect to the OIDC authorization endpoint.
   /callback:
     get:
@@ -218,7 +320,7 @@ paths:
             type: string
             format: uri
       responses:
-        '302':
+        "302":
           description: Redirect to the returnTo path on success.
   /logout:
     get:
@@ -226,10 +328,10 @@ paths:
       operationId: logoutBrowserSession
       summary: Clear the session and begin OIDC logout
       parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
-        - $ref: '#/components/parameters/SessionCookie'
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
       responses:
-        '302':
+        "302":
           description: Redirect to the OIDC provider logout URL.
   /mobile-auth/token-exchange:
     post:
@@ -241,46 +343,46 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/MobileTokenExchangeRequest'
+              $ref: "#/components/schemas/MobileTokenExchangeRequest"
       responses:
-        '200':
+        "200":
           description: Session created successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MobileTokenExchangeSuccess'
-        '400':
+                $ref: "#/components/schemas/MobileTokenExchangeSuccess"
+        "400":
           description: Missing or invalid required fields.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '401':
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
           description: Token did not contain usable claims.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
-        '500':
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
           description: Token exchange failed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorEnvelope'
+                $ref: "#/components/schemas/ErrorEnvelope"
   /mobile-auth/logout:
     post:
       tags: [Auth]
       operationId: logoutMobileSession
       summary: Delete a mobile session token
       parameters:
-        - $ref: '#/components/parameters/AuthorizationSessionHeader'
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
       responses:
-        '200':
+        "200":
           description: Logout processed.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/LogoutSuccess'
+                $ref: "#/components/schemas/LogoutSuccess"
 
   /stats:
     get:
@@ -294,6 +396,396 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/CasinoStats"
+              example:
+                totalPayoutToday: 847293.5
+                activePlayers: 1842
+                currentJackpot: 2450000
+                gamesAvailable: 156
+
+  /rounds:
+    post:
+      operationId: placeBet
+      tags: [rounds]
+      summary: Place a bet and start a game round
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BetRequest"
+            example:
+              gameType: "slots"
+              betAmount: 1000
+              clientSeed: "a3f7b2d98f3c2a1b..."
+              gameParams:
+                demo: false
+      responses:
+        "200":
+          description: Bet placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BetResponse"
+              example:
+                roundId: 12345
+                serverSeedHash: "a1b2c3d4e5f6..."
+                result: "pending"
+                payout: 0
+                newBalance: 9500
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Bet amount exceeds maximum"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Unauthorized"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Internal server error"
+    get:
+      operationId: listRounds
+      tags: [rounds]
+      summary: List game rounds for the authenticated user
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of rounds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GameRound"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /rounds/{id}:
+    get:
+      operationId: getRound
+      tags: [rounds]
+      summary: Get game round details
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Round details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameRound"
+              example:
+                id: 12345
+                userId: 987
+                gameType: "slots"
+                betAmount: 1000
+                payout: 5000
+                result: "win"
+                serverSeedHash: "a1b2c3d4e5f6..."
+                clientSeed: "my-client-seed-123"
+                nonce: 42
+                verified: true
+                createdAt: "2025-06-23T10:00:00Z"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Unauthorized"
+        "404":
+          description: Round not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Round not found"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Internal server error"
+
+  /rounds/{id}/verify:
+    post:
+      operationId: verifyRound
+      tags: [rounds]
+      summary: Verify a game round's fairness
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerificationRequest"
+            example:
+              roundId: 12345
+              serverSeed: "slots:a3f7b2d9:42:8f3c2a1b..."
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerificationResponse"
+              example:
+                verified: true
+                computedHash: "a1b2c3d4e5f6..."
+                expectedHash: "a1b2c3d4e5f6..."
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Invalid request"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Unauthorized"
+        "404":
+          description: Round not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Round not found"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Internal server error"
+
+  /wallet:
+    get:
+      operationId: getWallet
+      tags: [wallet]
+      summary: Get the authenticated user's wallet
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Wallet"
+              example:
+                id: 1
+                userId: 987
+                balance: 9500
+                currency: "USD"
+                createdAt: "2025-01-15T08:00:00Z"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Unauthorized"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Internal server error"
+
+  /wallet/history:
+    get:
+      operationId: getWalletHistory
+      tags: [wallet]
+      summary: Get wallet transaction history
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transaction history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+              example:
+                - id: 1
+                  walletId: 1
+                  userId: 987
+                  type: "bet"
+                  amount: -1000
+                  balanceBefore: 10500
+                  balanceAfter: 9500
+                  status: "completed"
+                  referenceId: "round_12345"
+                  description: "Bet on slots"
+                  createdAt: "2025-06-23T10:00:00Z"
+                - id: 2
+                  walletId: 1
+                  userId: 987
+                  type: "win"
+                  amount: 5000
+                  balanceBefore: 9500
+                  balanceAfter: 14500
+                  status: "completed"
+                  referenceId: "round_12345"
+                  description: "Win on slots"
+                  createdAt: "2025-06-23T10:01:00Z"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Unauthorized"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Internal server error"
+
+  /events:
+    get:
+      operationId: getEvents
+      tags: [events]
+      summary: Server-sent events stream
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/SSEEvent"
+              example:
+                eventType: "round_update"
+                data:
+                  roundId: 12345
+                  state: "resolved"
+                  result: "win"
+                  payout: 5000
+                timestamp: "2025-06-23T10:01:00Z"
+
+  /hash-chain/info:
+    get:
+      operationId: getHashChainInfo
+      tags: [hash-chain]
+      summary: Get provably fair hash chain info
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+      responses:
+        "200":
+          description: Hash chain info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashChainInfo"
+              example:
+                chainId: "a3f7b2d9"
+                gameType: "slots"
+                remainingHashes: 850000
+                currentHash: "a1b2c3d4e5f6..."
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Unauthorized"
+        "500":
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+              example:
+                error: "Internal server error"
 
 components:
   parameters:
@@ -319,22 +811,22 @@ components:
         id:
           type: string
         email:
-          type: [string, 'null']
+          type: [string, "null"]
           format: email
         firstName:
-          type: [string, 'null']
+          type: [string, "null"]
         lastName:
-          type: [string, 'null']
+          type: [string, "null"]
         profileImageUrl:
-          type: [string, 'null']
+          type: [string, "null"]
     AuthUserEnvelope:
       type: object
       required: [user]
       properties:
         user:
           oneOf:
-            - $ref: '#/components/schemas/AuthUser'
-            - type: 'null'
+            - $ref: "#/components/schemas/AuthUser"
+            - type: "null"
     MobileTokenExchangeRequest:
       type: object
       required: [code, code_verifier, redirect_uri, state]
@@ -383,7 +875,8 @@ components:
 
     Game:
       type: object
-      required: [id, name, category, provider, rtp, imageUrl, isFeatured, isHot, isNew]
+      required:
+        [id, name, category, provider, rtp, imageUrl, isFeatured, isHot, isNew]
       properties:
         id:
           type: integer
@@ -468,7 +961,8 @@ components:
 
     CasinoStats:
       type: object
-      required: [totalPayoutToday, activePlayers, currentJackpot, gamesAvailable]
+      required:
+        [totalPayoutToday, activePlayers, currentJackpot, gamesAvailable]
       properties:
         totalPayoutToday:
           type: number
@@ -478,3 +972,212 @@ components:
           type: number
         gamesAvailable:
           type: integer
+
+    GameRound:
+      type: object
+      required:
+        [
+          id,
+          userId,
+          gameType,
+          betAmount,
+          payout,
+          serverSeedHash,
+          clientSeed,
+          nonce,
+          verified,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        gameType:
+          type: string
+        betAmount:
+          type: integer
+          description: Bet amount in cents
+        payout:
+          type: integer
+          description: Payout in cents
+        result:
+          type: ["string", "null"]
+        serverSeedHash:
+          type: string
+        clientSeed:
+          type: string
+        nonce:
+          type: integer
+        verified:
+          type: boolean
+        createdAt:
+          type: string
+
+    Wallet:
+      type: object
+      required: [id, userId, balance, currency, createdAt]
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        balance:
+          type: integer
+          description: Balance in cents
+        currency:
+          type: string
+        createdAt:
+          type: string
+
+    BetRequest:
+      type: object
+      required: [gameType, betAmount, clientSeed]
+      properties:
+        gameType:
+          type: string
+          example: "slots"
+        betAmount:
+          type: integer
+          minimum: 1
+          description: Bet amount in cents
+          example: 1000
+        clientSeed:
+          type: string
+          example: "a3f7b2d98f3c2a1b..."
+        gameParams:
+          type: object
+          description: Optional game-specific parameters
+          example:
+            demo: false
+            rows: 16
+            risk: "medium"
+
+    BetResponse:
+      type: object
+      required: [roundId, serverSeedHash, result, payout, newBalance]
+      properties:
+        roundId:
+          type: integer
+        serverSeedHash:
+          type: string
+        result:
+          type: string
+        payout:
+          type: integer
+          description: Payout in cents
+        newBalance:
+          type: integer
+          description: New wallet balance in cents
+
+    HashChainInfo:
+      type: object
+      required: [chainId, gameType, remainingHashes, currentHash]
+      properties:
+        chainId:
+          type: string
+          example: "a3f7b2d9"
+        gameType:
+          type: string
+          example: "slots"
+        remainingHashes:
+          type: integer
+          example: 850000
+        currentHash:
+          type: string
+          example: "a1b2c3d4e5f6..."
+
+    VerificationRequest:
+      type: object
+      required: [roundId, serverSeed]
+      properties:
+        roundId:
+          type: integer
+          example: 12345
+        serverSeed:
+          type: string
+          example: "slots:a3f7b2d9:42:8f3c2a1b..."
+
+    VerificationResponse:
+      type: object
+      required: [verified, computedHash, expectedHash]
+      properties:
+        verified:
+          type: boolean
+          example: true
+        computedHash:
+          type: string
+          example: "a1b2c3d4e5f6..."
+        expectedHash:
+          type: string
+          example: "a1b2c3d4e5f6..."
+
+    SSEEvent:
+      type: object
+      required: [eventType, data, timestamp]
+      properties:
+        eventType:
+          type: string
+          example: "round_update"
+        data:
+          type: object
+          example:
+            roundId: 12345
+            state: "resolved"
+            result: "win"
+            payout: 5000
+        timestamp:
+          type: string
+          example: "2025-06-23T10:01:00Z"
+
+    Transaction:
+      type: object
+      required:
+        [
+          id,
+          walletId,
+          userId,
+          type,
+          amount,
+          balanceBefore,
+          balanceAfter,
+          status,
+          createdAt,
+        ]
+      properties:
+        id:
+          type: integer
+          example: 1
+        walletId:
+          type: integer
+          example: 1
+        userId:
+          type: integer
+          example: 987
+        type:
+          type: string
+          example: "bet"
+        amount:
+          type: integer
+          description: Amount in cents
+          example: -1000
+        balanceBefore:
+          type: integer
+          description: Balance before in cents
+          example: 10500
+        balanceAfter:
+          type: integer
+          description: Balance after in cents
+          example: 9500
+        status:
+          type: string
+          example: "completed"
+        referenceId:
+          type: ["string", "null"]
+          example: "round_12345"
+        description:
+          type: ["string", "null"]
+          example: "Bet on slots"
+        createdAt:
+          type: string
+          example: "2025-06-23T10:00:00Z"

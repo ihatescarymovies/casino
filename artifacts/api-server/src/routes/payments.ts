@@ -57,14 +57,21 @@ router.get("/deposit-packages", (_req, res) => {
 router.post("/checkout", async (req: any, res) => {
   try {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
 
     const { priceId } = req.body;
-    if (!priceId) return res.status(400).json({ error: "priceId required" });
+    if (!priceId) {
+      res.status(400).json({ error: "priceId required" });
+      return;
+    }
 
     const pkg = DEPOSIT_PACKAGES.find((p) => p.id === priceId);
-    if (!pkg) return res.status(400).json({ error: "Invalid package" });
+    if (!pkg) {
+      res.status(400).json({ error: "Invalid package" });
+      return;
+    }
 
     const payram = getPayramClient();
     const user = req.user;
@@ -80,7 +87,7 @@ router.post("/checkout", async (req: any, res) => {
     await db.execute(
       sql`INSERT INTO payment_sessions (reference_id, invoice_id, user_id, amount_usd, status, created_at, updated_at)
           VALUES (${checkout.reference_id}, ${invoiceId}, ${user.id}, ${pkg.amountInUSD}, 'open', NOW(), NOW())
-          ON CONFLICT (reference_id) DO NOTHING`
+          ON CONFLICT (reference_id) DO NOTHING`,
     );
 
     res.json({ url: checkout.url });
@@ -93,17 +100,21 @@ router.post("/checkout", async (req: any, res) => {
 router.get("/status/:referenceId", async (req: any, res) => {
   try {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
     const rows = await db.execute(
       sql`SELECT reference_id, status, filled_amount, filled_currency, amount_usd, updated_at
           FROM payment_sessions
           WHERE reference_id = ${req.params.referenceId}
             AND user_id = ${req.user.id}
-          LIMIT 1`
+          LIMIT 1`,
     );
     const row = rows.rows[0];
-    if (!row) return res.status(404).json({ error: "Session not found" });
+    if (!row) {
+      res.status(404).json({ error: "Session not found" });
+      return;
+    }
     res.json(row);
   } catch (err: any) {
     res.status(500).json({ error: "Failed to fetch status" });
@@ -113,14 +124,15 @@ router.get("/status/:referenceId", async (req: any, res) => {
 router.get("/history", async (req: any, res) => {
   try {
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ error: "Unauthorized" });
+      res.status(401).json({ error: "Unauthorized" });
+      return;
     }
     const rows = await db.execute(
       sql`SELECT reference_id, invoice_id, amount_usd, status, filled_amount, filled_currency, created_at
           FROM payment_sessions
           WHERE user_id = ${req.user.id}
           ORDER BY created_at DESC
-          LIMIT 20`
+          LIMIT 20`,
     );
     res.json(rows.rows);
   } catch (err: any) {
@@ -131,7 +143,9 @@ router.get("/history", async (req: any, res) => {
 
 router.get("/payram-webhook", async (req, res) => {
   try {
-    await WebhookHandlers.processPayramWebhook(req.query as Record<string, any>);
+    await WebhookHandlers.processPayramWebhook(
+      req.query as Record<string, any>,
+    );
     res.status(200).json({ received: true });
   } catch (err: any) {
     console.error("Webhook error:", err);

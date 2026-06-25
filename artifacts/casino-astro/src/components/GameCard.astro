@@ -53,10 +53,13 @@ const image = imageUrl || getGameFallbackImage(category);
         <p class="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity delay-100">{provider}</p>
       </div>
 
-      <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 bg-black/40 backdrop-blur-[2px]">
-        <div class="bg-primary text-primary-foreground font-bold px-6 py-2 rounded-full transform scale-90 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_20px_rgba(234,179,8,0.6)]">
+      <div class="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10 bg-black/40 backdrop-blur-[2px] gap-3">
+        <a href={`/games/${id}?mode=real`} class="bg-primary text-primary-foreground font-bold px-6 py-2 rounded-full transform scale-90 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_20px_rgba(234,179,8,0.6)] text-sm">
           PLAY NOW
-        </div>
+        </a>
+        <a href={`/games/${id}?mode=demo`} class="bg-white/10 text-white font-bold px-6 py-2 rounded-full transform scale-90 group-hover:scale-100 transition-transform duration-300 border border-white/20 hover:bg-white/20 text-sm">
+          FREE PLAY
+        </a>
       </div>
     </div>
   </div>

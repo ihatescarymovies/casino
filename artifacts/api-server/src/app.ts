@@ -5,6 +5,7 @@ import pinoHttp from "pino-http";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
+import { errorHandler } from "./middleware/errorHandler";
 
 const app: Express = express();
 
@@ -29,5 +30,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);
 
 app.use("/api", router);
+
+// Error handler MUST be the LAST middleware
+app.use(errorHandler);
 
 export default app;

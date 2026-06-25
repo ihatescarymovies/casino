@@ -1,3 +1,5 @@
+export * from "./demo-transactions";
+export * from "./demo-wallets";
 export * from "./game-rounds";
 export * from "./game-sessions";
 export * from "./games";

@@ -1,12 +1,21 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import GameCard from "@/components/GameCard.astro";
+import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
 import { apiFetch } from "@/lib/api";
 import { formatCurrency } from "@/lib/formatters";
 import { getGameFallbackImage } from "@/lib/game-helpers";
 import type { Game } from "@workspace/api-client-react";
 
 import { gameIdParamSchema } from "@/lib/schemas";
+
+import SlotsGame from "@/components/islands/SlotsGame.tsx";
+import BlackjackGame from "@/components/islands/BlackjackGame.tsx";
+import RouletteGame from "@/components/islands/RouletteGame.tsx";
+import CrashGame from "@/components/islands/CrashGame.tsx";
+import DiceGame from "@/components/islands/DiceGame.tsx";
+import MinesGame from "@/components/islands/MinesGame.tsx";
+import PlinkoGame from "@/components/islands/PlinkoGame.tsx";
 
 const paramResult = gameIdParamSchema.safeParse(Astro.params);
 const gameId = paramResult.success ? paramResult.data.id : 0;
@@ -34,12 +43,32 @@ if (game) {
 }
 
 const image = game?.imageUrl || getGameFallbackImage(game?.category);
+
+const gameComponents: Record<string, React.FC<{ demo?: boolean }>> = {
+  slots: SlotsGame,
+  blackjack: BlackjackGame,
+  roulette: RouletteGame,
+  crash: CrashGame,
+  dice: DiceGame,
+  mines: MinesGame,
+  plinko: PlinkoGame,
+};
+
+const GameRenderer = game ? gameComponents[game.category] : null;
+const isDemo = Astro.url.searchParams.get("mode") === "demo";
 ---
 
 <BaseLayout title={game ? `${game.name} — Charter & Oak` : "Game Not Found — Charter & Oak"} description={game?.description || "Game details and play options."}>
   <main id="main-content" class="container mx-auto px-4 py-12 flex flex-col gap-12">
     {game ? (
       <>
+        {isDemo && (
+          <div class="w-full bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 text-center">
+            <span class="text-yellow-400 font-bold uppercase tracking-wider text-sm">DEMO MODE</span>
+            <span class="text-yellow-400/80 text-sm ml-2">— Playing with virtual credits. No real money involved.</span>
+          </div>
+        )}
+
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
           <a href="/games" class="hover:text-white transition-colors">Games</a>
           <span>/</span>
@@ -50,22 +79,22 @@ const image = game?.imageUrl || getGameFallbackImage(game?.category);
 
         <div class="flex flex-col lg:flex-row gap-12">
           <div class="lg:w-2/3 flex flex-col gap-6">
-            <div class="relative aspect-[16/9] bg-black rounded-2xl overflow-hidden border border-white/10 group flex items-center justify-center">
-              <img src={image} alt={game.name} class="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px]" />
-              <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-
-              <div class="relative z-10 flex flex-col items-center text-center p-6 bg-black/60 backdrop-blur-md border border-white/10 rounded-xl max-w-md w-full">
-                <h2 class="text-3xl font-bold text-white mb-2">{game.name}</h2>
-                <p class="text-primary font-medium mb-8 uppercase tracking-wider">{game.provider}</p>
-
-                <button type="button" class="w-full btn btn-primary text-xl h-16 shadow-[0_0_30px_rgba(234,179,8,0.5)]">
-                  PLAY FOR REAL
-                </button>
-                <button type="button" class="w-full btn btn-ghost mt-2 text-muted-foreground hover:text-white">
-                  Try Demo Version
-                </button>
+            {GameRenderer ? (
+              <div class="bg-black rounded-2xl overflow-hidden border border-white/10">
+                <IslandErrorBoundary client:load>
+                  <GameRenderer client:load demo={isDemo} />
+                </IslandErrorBoundary>
               </div>
-            </div>
+            ) : (
+              <div class="relative aspect-[16/9] bg-black rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center">
+                <img src={image} alt={game.name} class="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px]" loading="lazy" decoding="async" />
+                <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                <div class="relative z-10 text-center p-6">
+                  <h2 class="text-2xl font-bold text-white mb-2">{game.name}</h2>
+                  <p class="text-muted-foreground">This game type is not yet available.</p>
+                </div>
+              </div>
+            )}
 
             <div class="prose prose-invert max-w-none">
               <h3 class="text-xl font-bold text-white mb-4">About {game.name}</h3>
@@ -115,6 +144,15 @@ const image = game?.imageUrl || getGameFallbackImage(game?.category);
                   <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Max Bet</span>
                   <span class="block text-xl font-bold text-white">{game.maxBet ? formatCurrency(game.maxBet) : '$5,000'}</span>
                 </div>
+              </div>
+
+              <div class="flex flex-col gap-3 pt-4 border-t border-white/5">
+                <a href={`/games/${game.id}?mode=real`} class="btn btn-primary text-center text-lg h-14 shadow-[0_0_30px_rgba(234,179,8,0.5)]">
+                  PLAY FOR REAL
+                </a>
+                <a href={`/games/${game.id}?mode=demo`} class="btn btn-ghost text-center text-muted-foreground hover:text-white">
+                  TRY DEMO
+                </a>
               </div>
             </div>
           </aside>

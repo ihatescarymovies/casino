@@ -12,7 +12,10 @@ router.get("/", async (req, res) => {
     if (category) conditions.push(eq(gamesTable.category, category as string));
     if (featured === "true") conditions.push(eq(gamesTable.isFeatured, true));
     const games = conditions.length
-      ? await db.select().from(gamesTable).where(and(...conditions))
+      ? await db
+          .select()
+          .from(gamesTable)
+          .where(and(...conditions))
       : await query;
     res.json(games);
   } catch (err) {
@@ -65,7 +68,10 @@ router.get("/:id", async (req, res) => {
       .select()
       .from(gamesTable)
       .where(eq(gamesTable.id, id));
-    if (!game) return res.status(404).json({ error: "Game not found" });
+    if (!game) {
+      res.status(404).json({ error: "Game not found" });
+      return;
+    }
     res.json(game);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch game" });

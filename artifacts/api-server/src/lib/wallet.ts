@@ -159,6 +159,66 @@ export async function creditPayout(
 }
 
 /**
+ * Credit a balance atomically (add funds to wallet).
+ * 1. Lock wallet row with SELECT FOR UPDATE
+ * 2. Credit balance
+ * 3. Record transaction
+ *
+ * All amounts in integer cents.
+ */
+export async function creditBalance(
+  userId: string,
+  amount: number,
+  gameType: string,
+  roundId: string,
+): Promise<BetResult> {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new WalletError("Credit amount must be a positive integer", 400);
+  }
+
+  return await db.transaction(async (tx) => {
+    const [wallet] = await tx
+      .select()
+      .from(schema.walletsTable)
+      .where(eq(schema.walletsTable.userId, userId))
+      .for("update");
+
+    if (!wallet) {
+      throw new WalletNotFound(`Wallet not found for user ${userId}`);
+    }
+
+    const balanceBefore = wallet.balance;
+    const balanceAfter = balanceBefore + amount;
+
+    await tx
+      .update(schema.walletsTable)
+      .set({ balance: balanceAfter, updatedAt: new Date() })
+      .where(eq(schema.walletsTable.id, wallet.id));
+
+    const [transaction] = await tx
+      .insert(schema.transactionsTable)
+      .values({
+        walletId: wallet.id,
+        userId,
+        type: "payout",
+        amount,
+        balanceBefore,
+        balanceAfter,
+        status: "completed",
+        referenceId: roundId,
+        description: `Credit from ${gameType}`,
+      })
+      .returning();
+
+    return {
+      transactionId: transaction.id,
+      balanceBefore,
+      balanceAfter,
+    };
+  });
+}
+
+/**
  * Get paginated transaction history for a user.
  */
 export async function getTransactionHistory(

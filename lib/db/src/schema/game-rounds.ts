@@ -25,6 +25,8 @@ export const gameRoundsTable = pgTable("game_rounds", {
   nonce: integer("nonce").default(0),
   chainId: integer("chain_id").references(() => hashChainsTable.id),
   verified: boolean("verified").default(false),
+  isDemo: boolean("is_demo").default(false),
+  status: varchar("status", { length: 20 }).default("pending"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

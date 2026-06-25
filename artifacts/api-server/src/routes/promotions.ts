@@ -20,7 +20,10 @@ router.get("/:id", async (req, res) => {
       .select()
       .from(promotionsTable)
       .where(eq(promotionsTable.id, id));
-    if (!promo) return res.status(404).json({ error: "Promotion not found" });
+    if (!promo) {
+      res.status(404).json({ error: "Promotion not found" });
+      return;
+    }
     res.json(promo);
   } catch (err) {
     res.status(500).json({ error: "Failed to fetch promotion" });
