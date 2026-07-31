@@ -291,11 +291,31 @@ router.post("/:id/verify", validate(VerifyRoundBody), async (req: Request, res: 
   const expectedHash = round.serverSeedHash ?? "";
   const commitmentMatch = computedHash.length === expectedHash.length && timingSafeEqual(Buffer.from(computedHash), Buffer.from(expectedHash));
   const [chain] = await db.select().from(schema.hashChainsTable).where(eq(schema.hashChainsTable.serverSeed, serverSeed));
+  // Hash-chain seeds are encoded as gameType:chainId:index:random. The
+  // round's nonce is assigned from that index in game-engine.ts; it is not
+  // a value embedded in the seed as an independent game-round nonce.
+  const seedParts = chain?.serverSeed.split(":");
+  const parsedIndex = seedParts?.length === 4 ? Number(seedParts[2]) : NaN;
+  const fieldMatches = {
+    game: seedParts?.length === 4 && seedParts[0] === round.gameType,
+    nonce: Number.isSafeInteger(parsedIndex) && parsedIndex === (round.nonce ?? 0),
+  };
   const chainMatch = Boolean(chain && chain.serverSeedHash === expectedHash);
-  const fieldMatches = { game: chain ? chain.serverSeed.startsWith(`${round.gameType}:`) : false, nonce: chain ? chain.serverSeed.split(":")[2] === String(round.nonce ?? 0) : false };
   const verified = commitmentMatch && chainMatch && fieldMatches.game && fieldMatches.nonce;
   await db.update(schema.gameRoundsTable).set({ verified }).where(eq(schema.gameRoundsTable.id, roundId));
-  res.status(200).json({ verified, commitmentMatch, chainMatch, fieldMatches, computedHash, expectedHash, replay: { implemented: false, resultMatch: null, payoutMatch: null }, warnings: ["Commitment verification is limited to seed commitment and chain consistency; deterministic game replay is not implemented yet."] });
+  res.status(200).json({
+    verified,
+    commitmentMatch,
+    chainMatch,
+    fieldMatches,
+    computedHash,
+    expectedHash,
+    replay: { implemented: false, resultMatch: null, payoutMatch: null },
+    warnings: [
+      "Commitment and encoded game/index checks passed; deterministic game replay is not implemented yet.",
+      "The database does not persist the encoded chain ID on the round, so chain ID continuity is not validated.",
+    ],
+  });
 });
 
 export default router;
