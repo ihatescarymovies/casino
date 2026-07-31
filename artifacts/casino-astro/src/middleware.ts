@@ -2,6 +2,9 @@ import { defineMiddleware } from "astro:middleware";
 import { randomBytes } from "node:crypto";
 import { API_BASE_URL, rateLimit, csrf, securityHeaders } from "@/lib/config";
 
+const API_PROXY_URL = "http://localhost:3001";
+const LOCAL_API_PATHS = ["/api/health", "/api/deposit"];
+
 function generateTraceId(): string {
   return randomBytes(16).toString("hex");
 }
@@ -227,6 +230,41 @@ export const onRequest = defineMiddleware(async (context, next) => {
     return context.redirect(
       `/api/login?returnTo=${encodeURIComponent(pathname)}`,
     );
+  }
+
+  // Proxy API requests to the Express API server (except local endpoints)
+  if (
+    pathname.startsWith("/api/") &&
+    !LOCAL_API_PATHS.includes(pathname) &&
+    !LOCAL_API_PATHS.some((p) => pathname.startsWith(`${p}/`))
+  ) {
+    try {
+      const proxyUrl = `${API_PROXY_URL}${pathname}${new URL(context.request.url).search}`;
+      const proxyHeaders = new Headers(context.request.headers);
+      proxyHeaders.delete("host");
+      const proxyRes = await fetch(proxyUrl, {
+        method,
+        headers: proxyHeaders,
+        body: method !== "GET" && method !== "HEAD"
+          ? await context.request.text()
+          : undefined,
+        redirect: "manual",
+      });
+      const resHeaders = new Headers(proxyRes.headers);
+      for (const [key, value] of Object.entries(SECURITY_HEADERS)) {
+        resHeaders.set(key, value);
+      }
+      resHeaders.set("X-Trace-Id", traceId);
+      return new Response(proxyRes.body, {
+        status: proxyRes.status,
+        headers: resHeaders,
+      });
+    } catch {
+      return new Response(JSON.stringify({ error: "API unavailable" }), {
+        status: 502,
+        headers: { "Content-Type": "application/json", "X-Trace-Id": traceId },
+      });
+    }
   }
 
   const response = await next();

@@ -44,9 +44,16 @@ const stats = await apiFetch<CasinoStats>("/api/stats");
         </div>
 
         <div class="mb-8">
-          <IslandErrorBoundary client:load>
-            <QueryProvider client:load>
-              <JackpotCounter client:load initialAmount={stats?.currentJackpot} />
+          <!-- SSR: static jackpot for non-JS / before hydration -->
+          <noscript>
+            <div class="font-mono text-5xl md:text-7xl lg:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-primary via-yellow-300 to-yellow-600 drop-shadow-[0_0_25px_rgba(234,179,8,0.5)] tracking-tighter animate-pulse-glow">
+              {stats ? formatCurrency(stats.currentJackpot) : "—"}
+            </div>
+          </noscript>
+          <!-- Client-only: interactive React Query jackpot -->
+          <IslandErrorBoundary client:only="react">
+            <QueryProvider client:only="react">
+              <JackpotCounter client:only="react" initialAmount={stats?.currentJackpot} />
             </QueryProvider>
           </IslandErrorBoundary>
         </div>
@@ -103,9 +110,18 @@ const stats = await apiFetch<CasinoStats>("/api/stats");
       <div class="flex-1 overflow-hidden relative">
         <div class="absolute top-0 left-0 w-8 h-full bg-gradient-to-r from-card to-transparent z-10" />
         <div class="absolute top-0 right-0 w-8 h-full bg-gradient-to-l from-card to-transparent z-10" />
-        <IslandErrorBoundary client:load>
-          <QueryProvider client:load>
-            <WinnersTicker client:load winners={winners ?? []} />
+        <noscript>
+          <div class="flex items-center gap-4 animate-marquee whitespace-nowrap px-4 text-sm">
+            {winners?.map((w) => (
+              <span class="text-muted-foreground">
+                <strong class="text-primary">{w.playerName}</strong> won {formatCurrency(w.winAmount)} on {w.gameName}
+              </span>
+            )) ?? <span class="text-muted-foreground">No recent wins</span>}
+          </div>
+        </noscript>
+        <IslandErrorBoundary client:only="react">
+          <QueryProvider client:only="react">
+            <WinnersTicker client:only="react" winners={winners ?? []} />
           </QueryProvider>
         </IslandErrorBoundary>
       </div>

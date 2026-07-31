@@ -10,7 +10,7 @@ export * from "./transactions";
 export * from "./wallets";
 export * from "./winners";
 
-// auth.ts — re-export with renames to avoid collisions with sessions.ts and users.ts
+// auth.ts — Replit auth compatible (varchar IDs, mandatory for Replit Auth)
 export {
   sessionsTable as authSessionsTable,
   usersTable as authUsersTable,
@@ -18,14 +18,5 @@ export {
   type User as AuthUser,
 } from "./auth";
 
-// sessions.ts (app session store, NOT Replit auth) — conflicts with auth.ts's sessionsTable
-export { sessionsTable, type Session, type InsertSession } from "./sessions";
-
-// users.ts (legacy serial PK users) — conflicts with auth.ts's usersTable and User
-export {
-  usersTable,
-  oauthAccountsTable,
-  type User as LegacyUser,
-  type InsertUser as LegacyInsertUser,
-  type OAuthAccount,
-} from "./users";
+// sessions.ts — app user login session store (renamed to avoid collision with auth sessions)
+export { sessionsTable as userSessionsTable, type Session, type InsertSession } from "./sessions";
