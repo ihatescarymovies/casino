@@ -9,16 +9,14 @@ interface JackpotCounterProps {
 }
 
 export default function JackpotCounter({ initialAmount }: JackpotCounterProps) {
-  const { data: stats, isError } = useGetCasinoStats(
-    {
-      query: {
-        queryKey: getGetCasinoStatsQueryKey(),
-        refetchInterval: 30000,
-      },
+  const { data: stats, isError } = useGetCasinoStats({
+    query: {
+      queryKey: getGetCasinoStatsQueryKey(),
+      refetchInterval: 30000,
+      // Only attempt the query on the client; skip during SSR
+      enabled: typeof window !== "undefined",
     },
-    // Only attempt the query on the client; skip during SSR
-    { query: { enabled: typeof window !== "undefined" } },
-  );
+  });
 
   const amount =
     !isError && stats?.currentJackpot != null
