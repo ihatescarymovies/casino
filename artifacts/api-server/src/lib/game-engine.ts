@@ -227,6 +227,7 @@ export abstract class BaseGameEngine implements GameEngine {
     const [updated] = await db
       .update(schema.gameRoundsTable)
       .set({
+        status: "completed",
         result: gameResult.result,
         payout: gameResult.payout,
         details: gameResult.gameDetails,

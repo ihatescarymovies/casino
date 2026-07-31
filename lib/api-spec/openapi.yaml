@@ -555,6 +555,28 @@ paths:
               example:
                 error: "Internal server error"
 
+  /rounds/{id}/fairness:
+    get:
+      operationId: getRoundFairness
+      tags: [rounds]
+      summary: Get sanitized fairness data for the authenticated user's round
+      parameters:
+        - $ref: "#/components/parameters/AuthorizationSessionHeader"
+        - $ref: "#/components/parameters/SessionCookie"
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Sanitized fairness data; server seed is null while pending
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FairnessRound" }
+        "401": { description: Unauthorized }
+        "403": { description: Forbidden }
+        "404": { description: Round not found }
+
   /rounds/{id}/verify:
     post:
       operationId: verifyRound
@@ -575,7 +597,6 @@ paths:
             schema:
               $ref: "#/components/schemas/VerificationRequest"
             example:
-              roundId: 12345
               serverSeed: "slots:a3f7b2d9:42:8f3c2a1b..."
       responses:
         "200":
@@ -972,6 +993,30 @@ components:
           type: number
         gamesAvailable:
           type: integer
+
+    FairnessRound:
+      type: object
+      required: [roundId, gameType, status, commitment, algorithm]
+      properties:
+        roundId: { type: integer }
+        gameType: { type: string }
+        status: { type: string }
+        demo: { type: boolean }
+        commitment: { type: [string, "null"] }
+        clientSeed: { type: [string, "null"] }
+        nonce: { type: [integer, "null"] }
+        serverSeed: { type: [string, "null"] }
+        result: { type: [string, "null"] }
+        payout: { type: [integer, "null"] }
+        params: { type: [object, "null"], additionalProperties: true }
+        chain: { type: [object, "null"], additionalProperties: true }
+        algorithm:
+          type: object
+          required: [name, version, replay]
+          properties:
+            name: { type: string }
+            version: { type: string }
+            replay: { type: boolean }
 
     GameRound:
       type: object
