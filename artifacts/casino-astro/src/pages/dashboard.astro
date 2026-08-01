@@ -1,14 +1,8 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import QueryProvider from "@/components/islands/QueryProvider.tsx";
-import Dashboard from "@/components/islands/Dashboard.tsx";
-import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
+import DashboardIsland from "@/components/islands/DashboardIsland.tsx";
 ---
 
 <BaseLayout title="Dashboard — Charter & Oak" description="Your personal casino dashboard. Track your stats, rewards, and recent activity.">
-  <IslandErrorBoundary client:load>
-    <QueryProvider client:load>
-      <Dashboard client:load />
-    </QueryProvider>
-  </IslandErrorBoundary>
+  <DashboardIsland client:load />
 </BaseLayout>

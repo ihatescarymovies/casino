@@ -1,8 +1,6 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import GamesFilter from "@/components/islands/GamesFilter.tsx";
-import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
-import QueryProvider from "@/components/islands/QueryProvider.tsx";
+import GamesFilterIsland from "@/components/islands/GamesFilterIsland.tsx";
 import { apiFetch } from "@/lib/api";
 import type { Game } from "@workspace/api-client-react";
 
@@ -23,10 +21,6 @@ const [categories, games] = await Promise.all([
       </div>
     </div>
 
-    <IslandErrorBoundary client:idle>
-      <QueryProvider client:idle>
-        <GamesFilter client:idle categories={categories ?? []} games={games ?? []} />
-      </QueryProvider>
-    </IslandErrorBoundary>
+    <GamesFilterIsland client:load categories={categories ?? []} games={games ?? []} />
   </main>
 </BaseLayout>
