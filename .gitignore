@@ -1,6 +1,6 @@
 # See https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files for more about ignoring files.
 
-# compiled output
+# ── Compiled output / build artifacts ───────────────────────────────
 dist
 tmp
 out-tsc
@@ -9,10 +9,18 @@ out-tsc
 .expo-shared
 .astro
 
-# dependencies
+# ── Dependencies ────────────────────────────────────────────────────
 node_modules
+.pnpm-store
 
-# IDEs and editors
+# ── Test artifacts ──────────────────────────────────────────────────
+coverage
+test-results
+playwright-report
+playwright/.cache
+.nyc_output
+
+# ── IDEs and editors ────────────────────────────────────────────────
 /.idea
 .project
 .classpath
@@ -20,32 +28,47 @@ node_modules
 *.launch
 .settings/
 *.sublime-workspace
+*.swp
+*.swo
+*~
 
-# IDE - VSCode
+# ── IDE — VSCode ────────────────────────────────────────────────────
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 
-# misc
-/.sass-cache
-/connect.lock
-/coverage
-/libpeerconnection.log
-npm-debug.log
-yarn-error.log
-testem.log
-/typings
-
-# System Files
-.DS_Store
-Thumbs.db
-
+# ── AI / agent tool state ───────────────────────────────────────────
+.omc/
+.opencode/
+.tokensave/
+.foresight/
+.jcode/
+.claude/
 .cursor/rules/nx-rules.mdc
 .github/instructions/nx.instructions.md
 
-# Replit
+# ── Misc ────────────────────────────────────────────────────────────
+/.sass-cache
+/connect.lock
+/libpeerconnection.log
+/typings
+
+# ── Logs ────────────────────────────────────────────────────────────
+npm-debug.log*
+yarn-error.log*
+yarn-debug.log*
+pnpm-debug.log*
+testem.log
+*.log
+
+# ── System files ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.pid
+
+# ── Replit ──────────────────────────────────────────────────────────
 .cache/
 .local/
 .replit
@@ -53,10 +76,14 @@ Thumbs.db
 replit.md
 **/.replit-artifact/
 
-# OpenCode / oh-my-openagent
+# ── OpenCode / oh-my-openagent (legacy) ─────────────────────────────
 .omo/
 
-# Environment
+# ── Environment ─────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
+
+# ── Lockfiles (non-pnpm, root only) ────────────────────────────────
+/package-lock.json
+/yarn.lock
