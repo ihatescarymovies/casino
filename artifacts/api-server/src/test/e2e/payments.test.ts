@@ -163,21 +163,25 @@ function createApp(userId?: string, role?: string) {
 /* ── Tests ─────────────────────────────────────────────────────────── */
 
 describe("GET /api/payments/deposit-packages", () => {
-  it("returns 200 with 5 packages including min-deposit", async () => {
+  it("returns 200 with 6 packages including min-deposit and standard", async () => {
     const app = createApp();
     const res = await request(app).get("/api/payments/deposit-packages");
 
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body as any)).toBe(true);
-    expect(res.body as any).toHaveLength(5);
+    expect(res.body as any).toHaveLength(6);
 
     // min-deposit should be first, $10 (1000 cents)
     expect((res.body as any)[0].id).toBe("min-deposit");
     expect((res.body as any)[0].prices[0].unitAmount).toBe(1000);
 
+    // standard should be at index 2, $50 (5000 cents)
+    expect((res.body as any)[2].id).toBe("standard");
+    expect((res.body as any)[2].prices[0].unitAmount).toBe(5000);
+
     // Last should be vip ($500 = 50000 cents)
-    expect((res.body as any)[4].id).toBe("vip");
-    expect((res.body as any)[4].prices[0].unitAmount).toBe(50000);
+    expect((res.body as any)[5].id).toBe("vip");
+    expect((res.body as any)[5].prices[0].unitAmount).toBe(50000);
   });
 
   it("works without authentication", async () => {
