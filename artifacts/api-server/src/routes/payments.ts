@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from "express";
 import { getPayramClient } from "../lib/payramClient";
 import { WebhookHandlers } from "../lib/webhookHandlers";
 import { logger } from "../lib/logger";
+import { recordPaymentCreation } from "../lib/metrics";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -206,9 +207,11 @@ router.post("/checkout", async (req: any, res) => {
       }
     }, FALLBACK_POLL_DELAY_MS);
 
+    recordPaymentCreation(priceId, "success");
     res.json({ url: checkout.url });
   } catch (err: any) {
     logger.error({ err }, "Checkout error");
+    recordPaymentCreation(req.body?.priceId ?? "unknown", "failed");
     res.status(500).json({ error: "Failed to create checkout session" });
   }
 });

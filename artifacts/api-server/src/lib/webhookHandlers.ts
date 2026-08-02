@@ -3,6 +3,11 @@ import { logger } from "./logger";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 import { sseManager } from "./sse";
+import {
+  recordWebhook,
+  recordWalletCredit,
+  recordSseBroadcast,
+} from "./metrics";
 
 export class WebhookHandlers {
   static verifyWebhookApiKey(headers: Record<string, unknown>): boolean {
@@ -19,6 +24,7 @@ export class WebhookHandlers {
   ): Promise<void> {
     const { reference_id, status, amount, currency } = payload;
     const receivedAt = new Date().toISOString();
+    const startNs = process.hrtime.bigint();
 
     logger.info(
       { reference_id, status, amount, currency, receivedAt },
@@ -80,6 +86,7 @@ export class WebhookHandlers {
             },
             "Wallet credited for completed deposit",
           );
+          recordWalletCredit("success");
         }
 
         sseManager.broadcast(`payment:${existingRow.user_id}`, "status", {
@@ -87,6 +94,7 @@ export class WebhookHandlers {
           status: "completed",
           amount: existingRow.amount_usd,
         });
+        recordSseBroadcast("payment_status");
       }
 
       logger.info({ reference_id }, "Payment marked as completed");
@@ -103,6 +111,7 @@ export class WebhookHandlers {
           status: "partial",
           amount: existingRow.amount_usd,
         });
+        recordSseBroadcast("payment_status");
       }
       logger.info({ reference_id }, "Payment marked as partial");
     } else {
@@ -117,6 +126,7 @@ export class WebhookHandlers {
           reference_id,
           status: status?.toLowerCase() ?? "unknown",
         });
+        recordSseBroadcast("payment_status");
       }
       logger.info({ reference_id, status }, "Payment status updated");
     }
@@ -125,5 +135,9 @@ export class WebhookHandlers {
       { reference_id, status, processedAt: new Date().toISOString() },
       "PayRam webhook processed",
     );
+
+    const durationNs = process.hrtime.bigint() - startNs;
+    const durationSec = Number(durationNs) / 1e9;
+    recordWebhook(status ?? "unknown", "success", durationSec);
   }
 }

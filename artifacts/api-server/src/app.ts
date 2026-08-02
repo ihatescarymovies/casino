@@ -6,6 +6,8 @@ import router from "./routes";
 import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { errorHandler } from "./middleware/errorHandler";
+import { metricsMiddleware } from "./middleware/metricsMiddleware";
+import { register } from "./lib/metrics";
 
 const app: Express = express();
 
@@ -28,6 +30,12 @@ app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(authMiddleware);
+app.use(metricsMiddleware);
+
+app.get("/metrics", async (_req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
 
 app.use("/api", router);
 
