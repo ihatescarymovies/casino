@@ -80,7 +80,7 @@ jobs:
     name: Test (API Server)
     runs-on: ubuntu-latest
     env:
-      NODE_OPTIONS: "--max-old-space-size=8192"
+      NODE_OPTIONS: "--max-old-space-size=16384"
     steps:
       - uses: actions/checkout@v4
 
@@ -97,7 +97,7 @@ jobs:
 
       - name: Run API server tests
         working-directory: artifacts/api-server
-        run: pnpm exec vitest run
+        run: pnpm exec vitest run --no-file-parallelism
 
   build:
     name: Build
