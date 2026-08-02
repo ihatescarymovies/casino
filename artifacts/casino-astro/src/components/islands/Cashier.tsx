@@ -1,5 +1,5 @@
 import { useAuth } from "@workspace/replit-auth-web";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   CreditCard,
   Lock,
@@ -13,11 +13,22 @@ import {
   AlertCircle,
   ArrowDownToLine,
   ArrowUpFromLine,
+  Clock,
+  X,
+  History,
 } from "lucide-react";
 
 type DepositMethod = "card" | "crypto" | "bank";
 type Step = "method" | "amount" | "confirm";
 type Tab = "deposit" | "withdraw";
+
+type TxHistoryItem = {
+  reference_id: string;
+  status: string;
+  amount_usd: number;
+  created_at: string;
+  filled_amount?: number;
+};
 
 const METHODS: {
   id: DepositMethod;
@@ -67,8 +78,59 @@ const PAYOUT_CHAINS: { code: string; label: string; currencies: string[] }[] = [
   { code: "BTC", label: "Bitcoin", currencies: ["USDC", "USDT"] },
 ];
 
+const MIN_CENTS = 1000;
+const MAX_CENTS = 1_000_000;
+const POLL_INTERVAL_MS = 3000;
+const POLL_MAX_ATTEMPTS = 10;
+
 function formatUSD(cents: number): string {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
+}
+
+function getFriendlyError(error: string): string {
+  const lower = error.toLowerCase();
+  if (lower.includes("network") || lower.includes("fetch"))
+    return "Connection issue. Check your internet and try again.";
+  if (lower.includes("csrf") || lower.includes("token"))
+    return "Security token expired. Please refresh the page and try again.";
+  if (lower.includes("unauthorized") || lower.includes("auth"))
+    return "Please log in to continue.";
+  if (lower.includes("rate") && lower.includes("limit"))
+    return "Too many attempts. Please wait a moment and try again.";
+  if (lower.includes("insufficient") || lower.includes("balance"))
+    return "Insufficient wallet balance for this withdrawal.";
+  if (lower.includes("payram"))
+    return "Payment provider error. Please try again or use a different method.";
+  if (lower.includes("invalid") && lower.includes("address"))
+    return "Invalid wallet address. Please double-check and try again.";
+  return error || "Something went wrong. Please try again.";
+}
+
+function statusColor(status: string): string {
+  const s = status.toUpperCase();
+  if (s === "FILLED" || s === "CONFIRMED") return "text-green-400";
+  if (s === "OPEN" || s === "CONFIRMING" || s === "DEPOSIT_RECEIVED")
+    return "text-amber-400";
+  if (s === "CANCELLED" || s === "EXPIRED") return "text-red-400";
+  return "text-muted-foreground";
+}
+
+function statusLabel(status: string): string {
+  const s = status.toUpperCase();
+  if (s === "FILLED") return "Completed";
+  if (s === "CONFIRMING") return "Confirming";
+  if (s === "DEPOSIT_RECEIVED") return "Received";
+  if (s === "CANCELLED") return "Cancelled";
+  if (s === "OPEN") return "Pending";
+  return status;
+}
+
+function getCsrfToken(): string | undefined {
+  return document.cookie
+    .split(";")
+    .map((c) => c.trim())
+    .find((c) => c.startsWith("csrf-token="))
+    ?.split("=")[1];
 }
 
 export default function Cashier() {
@@ -88,13 +150,117 @@ export default function Cashier() {
   const [withdrawAddress, setWithdrawAddress] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
 
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) login();
-  }, [authLoading, isAuthenticated, login]);
+  const [txHistory, setTxHistory] = useState<TxHistoryItem[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+
+  const [polling, setPolling] = useState(false);
+  const [pollAttempt, setPollAttempt] = useState(0);
+  const [pollStatus, setPollStatus] = useState<string>("");
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const selectedAmount =
     amount ??
     (customAmount ? Math.round(parseFloat(customAmount) * 100) : null);
+
+  const customAmountCents = customAmount
+    ? Math.round(parseFloat(customAmount) * 100)
+    : null;
+  const customAmountError =
+    customAmountCents !== null && !isNaN(customAmountCents)
+      ? customAmountCents < MIN_CENTS
+        ? "Minimum deposit is $10"
+        : customAmountCents > MAX_CENTS
+          ? "Maximum deposit is $10,000"
+          : null
+      : null;
+
+  const fetchTransactionHistory = useCallback(async () => {
+    setTxLoading(true);
+    try {
+      const res = await fetch("/api/payments/history", {
+        credentials: "include",
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const items = Array.isArray(data) ? data : (data.payments ?? []);
+      setTxHistory(items.slice(0, 5));
+    } catch {
+    } finally {
+      setTxLoading(false);
+    }
+  }, []);
+
+  const pollPaymentStatus = useCallback(async (referenceId: string) => {
+    setPolling(true);
+    setPollAttempt(0);
+    setPollStatus("Checking payment status...");
+
+    for (let attempt = 1; attempt <= POLL_MAX_ATTEMPTS; attempt++) {
+      setPollAttempt(attempt);
+      try {
+        const res = await fetch(`/api/payments/status/${referenceId}`, {
+          credentials: "include",
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const status = (data.status ?? "").toUpperCase();
+          if (status === "FILLED" || status === "CONFIRMED") {
+            setPolling(false);
+            setSuccess(true);
+            return;
+          }
+          if (status === "CANCELLED" || status === "EXPIRED") {
+            setPolling(false);
+            setError("Payment was cancelled or expired.");
+            return;
+          }
+          setPollStatus(
+            status === "CONFIRMING"
+              ? "Confirming on-chain..."
+              : status === "DEPOSIT_RECEIVED"
+                ? "Deposit received, confirming..."
+                : "Waiting for payment...",
+          );
+        }
+      } catch {}
+
+      if (attempt < POLL_MAX_ATTEMPTS) {
+        await new Promise<void>((resolve) => {
+          pollTimerRef.current = setTimeout(() => resolve(), POLL_INTERVAL_MS);
+        });
+      }
+    }
+
+    setPolling(false);
+    setPollStatus("Payment is still being processed. Check back shortly.");
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated) login();
+  }, [authLoading, isAuthenticated, login]);
+
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const refId = params.get("reference_id");
+    if (refId) {
+      pollPaymentStatus(refId);
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    } else {
+      fetchTransactionHistory();
+    }
+
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, [
+    authLoading,
+    isAuthenticated,
+    pollPaymentStatus,
+    fetchTransactionHistory,
+  ]);
 
   function selectMethod(id: DepositMethod) {
     setMethod(id);
@@ -133,11 +299,11 @@ export default function Cashier() {
   }
 
   async function handleDeposit() {
-    if (!selectedAmount || selectedAmount < 1000) {
+    if (!selectedAmount || selectedAmount < MIN_CENTS) {
       setError("Minimum deposit is $10.00");
       return;
     }
-    if (selectedAmount > 1000000) {
+    if (selectedAmount > MAX_CENTS) {
       setError("Maximum single deposit is $10,000.00");
       return;
     }
@@ -152,11 +318,7 @@ export default function Cashier() {
     setError(null);
 
     try {
-      const csrfToken = document.cookie
-        .split(";")
-        .map((c) => c.trim())
-        .find((c) => c.startsWith("csrf-token="))
-        ?.split("=")[1];
+      const csrfToken = getCsrfToken();
 
       const res = await fetch("/api/payments/checkout", {
         method: "POST",
@@ -174,9 +336,9 @@ export default function Cashier() {
         return;
       }
 
-      setSuccess(true);
+      setError(getFriendlyError(data.error || "Failed to start checkout."));
     } catch {
-      setError("Network error. Please try again.");
+      setError(getFriendlyError("Network error"));
     } finally {
       setProcessing(false);
     }
@@ -188,11 +350,11 @@ export default function Cashier() {
       setError("Enter a destination wallet address");
       return;
     }
-    if (!Number.isFinite(cents) || cents < 1000) {
+    if (!Number.isFinite(cents) || cents < MIN_CENTS) {
       setError("Minimum withdrawal is $10.00");
       return;
     }
-    if (cents > 1_000_000) {
+    if (cents > MAX_CENTS) {
       setError("Maximum single withdrawal is $10,000.00");
       return;
     }
@@ -201,11 +363,7 @@ export default function Cashier() {
     setError(null);
 
     try {
-      const csrfToken = document.cookie
-        .split(";")
-        .map((c) => c.trim())
-        .find((c) => c.startsWith("csrf-token="))
-        ?.split("=")[1];
+      const csrfToken = getCsrfToken();
 
       const res = await fetch("/api/payments/withdraw", {
         method: "POST",
@@ -224,19 +382,48 @@ export default function Cashier() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.error || "Withdrawal failed");
+        setError(getFriendlyError(data.error || "Withdrawal failed"));
         return;
       }
 
       setSuccess(true);
+      fetchTransactionHistory();
     } catch {
-      setError("Network error. Please try again.");
+      setError(getFriendlyError("Network error"));
     } finally {
       setProcessing(false);
     }
   }
 
   if (authLoading || (!isAuthenticated && !authLoading)) return null;
+
+  if (polling) {
+    return (
+      <div className="container mx-auto px-4 py-12 max-w-2xl">
+        <div className="text-center py-20">
+          <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+            <Clock className="h-8 w-8 text-primary animate-pulse" />
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Processing Payment
+          </h2>
+          <p className="text-muted-foreground mb-6">{pollStatus}</p>
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>
+              Attempt {pollAttempt} of {POLL_MAX_ATTEMPTS}
+            </span>
+          </div>
+          <div className="mt-6 max-w-xs mx-auto h-1.5 bg-card rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-500"
+              style={{ width: `${(pollAttempt / POLL_MAX_ATTEMPTS) * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (success) {
     return (
@@ -274,6 +461,7 @@ export default function Cashier() {
               setCustomAmount("");
               setWithdrawAddress("");
               setWithdrawAmount("");
+              fetchTransactionHistory();
             }}
           >
             {tab === "deposit"
@@ -288,7 +476,7 @@ export default function Cashier() {
   const chainConfig = PAYOUT_CHAINS.find((c) => c.code === withdrawChain);
 
   return (
-    <div className="container mx-auto px-4 py-12 max-w-4xl">
+    <div className="container mx-auto px-4 py-12 max-w-6xl">
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-2">
           <Wallet className="h-7 w-7 text-primary" />
@@ -309,239 +497,405 @@ export default function Cashier() {
         </span>
       </div>
 
-      <div className="flex gap-2 mb-8">
-        <button
-          type="button"
-          onClick={() => switchTab("deposit")}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-colors ${
-            tab === "deposit"
-              ? "bg-primary text-primary-foreground"
-              : "bg-card/50 text-muted-foreground border border-white/10 hover:text-white"
-          }`}
-        >
-          <ArrowDownToLine className="h-5 w-5" />
-          Deposit
-        </button>
-        <button
-          type="button"
-          onClick={() => switchTab("withdraw")}
-          className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-colors ${
-            tab === "withdraw"
-              ? "bg-primary text-primary-foreground"
-              : "bg-card/50 text-muted-foreground border border-white/10 hover:text-white"
-          }`}
-        >
-          <ArrowUpFromLine className="h-5 w-5" />
-          Withdraw
-        </button>
-      </div>
-
-      {error && (
-        <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-red-400 flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
-      {tab === "deposit" && (
-        <>
-          <div className="flex items-center gap-2 mb-8 text-sm">
-            {(["method", "amount", "confirm"] as Step[]).map((s, i) => {
-              const labels = ["Method", "Amount", "Confirm"];
-              const isActive = step === s;
-              const isPast =
-                (s === "method" && step !== "method") ||
-                (s === "amount" && step === "confirm");
-              return (
-                <div key={s} className="flex items-center gap-2">
-                  <div
-                    className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold border transition-colors ${
-                      isActive
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : isPast
-                          ? "bg-primary/20 text-primary border-primary/40"
-                          : "bg-card text-muted-foreground border-white/10"
-                    }`}
-                  >
-                    {isPast ? <Check className="h-4 w-4" /> : i + 1}
-                  </div>
-                  <span
-                    className={
-                      isActive
-                        ? "text-white font-medium"
-                        : "text-muted-foreground"
-                    }
-                  >
-                    {labels[i]}
-                  </span>
-                  {i < 2 && <div className="w-8 h-px bg-white/10 mx-1" />}
-                </div>
-              );
-            })}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <div className="flex flex-col sm:flex-row gap-2 mb-8">
+            <button
+              type="button"
+              onClick={() => switchTab("deposit")}
+              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-colors ${
+                tab === "deposit"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card/50 text-muted-foreground border border-white/10 hover:text-white"
+              }`}
+            >
+              <ArrowDownToLine className="h-5 w-5" />
+              Deposit
+            </button>
+            <button
+              type="button"
+              onClick={() => switchTab("withdraw")}
+              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-bold transition-colors ${
+                tab === "withdraw"
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-card/50 text-muted-foreground border border-white/10 hover:text-white"
+              }`}
+            >
+              <ArrowUpFromLine className="h-5 w-5" />
+              Withdraw
+            </button>
           </div>
 
-          {step === "method" && (
-            <div>
-              <h2 className="text-xl font-bold text-white mb-4">
-                Choose Deposit Method
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {METHODS.map((m) => {
-                  const Icon = m.icon;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className={`bg-gradient-to-br ${m.color} border rounded-2xl p-6 text-left hover:scale-[1.02] focus-within:scale-[1.02] transition-transform group`}
-                      onClick={() => selectMethod(m.id)}
-                      aria-label={`Deposit via ${m.label}`}
-                    >
-                      <div className="p-2.5 rounded-xl bg-white/5 inline-block mb-4">
-                        <Icon className="h-6 w-6 text-primary" />
-                      </div>
-                      <h3 className="text-lg font-bold text-white mb-1">
-                        {m.label}
-                      </h3>
-                      <p className="text-sm text-muted-foreground">
-                        {m.description}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
+          {error && (
+            <div className="mb-6 p-4 rounded-lg bg-destructive/10 border border-destructive/30 text-sm text-red-400 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              {error}
             </div>
           )}
 
-          {step === "amount" && (
-            <div>
-              <h2 className="text-xl font-bold text-white mb-4">
-                Select Amount
-              </h2>
-
-              <div className="grid grid-cols-3 md:grid-cols-6 gap-3 mb-6">
-                {PRESET_AMOUNTS.map((cents) => {
-                  const selected = amount === cents;
+          {tab === "deposit" && (
+            <div className={processing ? "animate-pulse" : ""}>
+              <div className="flex items-center gap-2 mb-8 text-sm overflow-x-auto">
+                {(["method", "amount", "confirm"] as Step[]).map((s, i) => {
+                  const labels = ["Method", "Amount", "Confirm"];
+                  const isActive = step === s;
+                  const isPast =
+                    (s === "method" && step !== "method") ||
+                    (s === "amount" && step === "confirm");
                   return (
-                    <button
-                      key={cents}
-                      type="button"
-                      className={`py-3 px-4 rounded-xl border text-center font-bold transition-colors ${
-                        selected
-                          ? "bg-primary text-primary-foreground border-primary shadow-[0_0_12px_rgba(234,179,8,0.3)]"
-                          : "bg-card/50 text-white border-white/10 hover:border-primary/50"
-                      }`}
-                      onClick={() => selectPreset(cents)}
+                    <div
+                      key={s}
+                      className="flex items-center gap-2 flex-shrink-0"
                     >
-                      {formatUSD(cents)}
-                    </button>
+                      <div
+                        className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold border transition-colors ${
+                          isActive
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : isPast
+                              ? "bg-primary/20 text-primary border-primary/40"
+                              : "bg-card text-muted-foreground border-white/10"
+                        }`}
+                      >
+                        {isPast ? <Check className="h-4 w-4" /> : i + 1}
+                      </div>
+                      <span
+                        className={
+                          isActive
+                            ? "text-white font-medium"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {labels[i]}
+                      </span>
+                      {i < 2 && <div className="w-8 h-px bg-white/10 mx-1" />}
+                    </div>
                   );
                 })}
               </div>
 
-              <div className="mb-8">
-                <label
-                  htmlFor="custom-amount"
-                  className="block text-sm text-muted-foreground mb-2"
-                >
-                  Or enter a custom amount (USD)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
-                    $
-                  </span>
+              {step === "method" && (
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-4">
+                    Choose Deposit Method
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {METHODS.map((m) => {
+                      const Icon = m.icon;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          className={`bg-gradient-to-br ${m.color} border rounded-2xl p-6 text-left hover:scale-[1.02] focus-within:scale-[1.02] transition-transform group`}
+                          onClick={() => selectMethod(m.id)}
+                          aria-label={`Deposit via ${m.label}`}
+                        >
+                          <div className="p-2.5 rounded-xl bg-white/5 inline-block mb-4">
+                            <Icon className="h-6 w-6 text-primary" />
+                          </div>
+                          <h3 className="text-lg font-bold text-white mb-1">
+                            {m.label}
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            {m.description}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {step === "amount" && (
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-4">
+                    Select Amount
+                  </h2>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 mb-6">
+                    {PRESET_AMOUNTS.map((cents) => {
+                      const selected = amount === cents;
+                      return (
+                        <button
+                          key={cents}
+                          type="button"
+                          className={`py-3 px-4 rounded-xl border text-center font-bold transition-colors ${
+                            selected
+                              ? "bg-primary text-primary-foreground border-primary shadow-[0_0_12px_rgba(234,179,8,0.3)]"
+                              : "bg-card/50 text-white border-white/10 hover:border-primary/50"
+                          }`}
+                          onClick={() => selectPreset(cents)}
+                        >
+                          {formatUSD(cents)}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mb-8">
+                    <label
+                      htmlFor="custom-amount"
+                      className="block text-sm text-muted-foreground mb-2"
+                    >
+                      Or enter a custom amount (USD)
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
+                        $
+                      </span>
+                      <input
+                        id="custom-amount"
+                        type="number"
+                        min="10"
+                        max="10000"
+                        step="1"
+                        placeholder="0.00"
+                        value={customAmount}
+                        onChange={(e) => handleCustomChange(e.target.value)}
+                        className={`w-full pl-8 pr-4 py-3 bg-card/50 border rounded-xl text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary ${
+                          customAmountError
+                            ? "border-red-500/50"
+                            : customAmountCents &&
+                                customAmountCents >= MIN_CENTS &&
+                                customAmountCents <= MAX_CENTS
+                              ? "border-green-500/50"
+                              : "border-white/10"
+                        }`}
+                      />
+                    </div>
+                    {customAmountError && (
+                      <p className="text-xs text-red-400 mt-2 flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        {customAmountError}
+                      </p>
+                    )}
+                    {!customAmountError &&
+                      customAmountCents &&
+                      customAmountCents >= MIN_CENTS &&
+                      customAmountCents <= MAX_CENTS && (
+                        <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
+                          <Check className="h-3 w-3" />
+                          Valid amount
+                        </p>
+                      )}
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors"
+                      onClick={goBack}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary flex items-center gap-2"
+                      disabled={
+                        !selectedAmount ||
+                        selectedAmount < MIN_CENTS ||
+                        selectedAmount > MAX_CENTS
+                      }
+                      onClick={() => {
+                        if (
+                          selectedAmount &&
+                          selectedAmount >= MIN_CENTS &&
+                          selectedAmount <= MAX_CENTS
+                        ) {
+                          setError(null);
+                          setStep("confirm");
+                        }
+                      }}
+                    >
+                      Continue
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {step === "confirm" && (
+                <div>
+                  <h2 className="text-xl font-bold text-white mb-6">
+                    Confirm Deposit
+                  </h2>
+
+                  <div className="bg-card/50 border border-white/5 rounded-2xl p-6 backdrop-blur-xl mb-8">
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Method</span>
+                        <span className="text-white font-medium">
+                          {METHODS.find((m) => m.id === method)?.label ?? "—"}
+                        </span>
+                      </div>
+                      <div className="h-px bg-white/5" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Amount</span>
+                        <span className="text-2xl font-black text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]">
+                          {formatUSD(selectedAmount ?? 0)}
+                        </span>
+                      </div>
+                      <div className="h-px bg-white/5" />
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">
+                          Processing
+                        </span>
+                        <span className="text-green-400 text-sm font-medium">
+                          Instant
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <button
+                      type="button"
+                      className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors"
+                      onClick={goBack}
+                    >
+                      <ArrowLeft className="h-4 w-4" />
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary flex items-center gap-2 shadow-[0_0_12px_rgba(234,179,8,0.3)] font-bold min-w-[160px] justify-center"
+                      disabled={processing}
+                      onClick={handleDeposit}
+                      aria-busy={processing}
+                    >
+                      {processing ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <>
+                          Confirm Deposit
+                          <Check className="h-4 w-4" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {tab === "withdraw" && (
+            <div className={processing ? "animate-pulse" : ""}>
+              <h2 className="text-xl font-bold text-white mb-6">
+                Withdraw to Crypto Wallet
+              </h2>
+
+              <div className="bg-card/50 border border-white/5 rounded-2xl p-6 backdrop-blur-xl mb-8 space-y-6">
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-2">
+                    Blockchain
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {PAYOUT_CHAINS.map((c) => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        className={`py-3 px-4 rounded-xl border font-bold transition-colors ${
+                          withdrawChain === c.code
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card/50 text-white border-white/10 hover:border-primary/50"
+                        }`}
+                        onClick={() => {
+                          setWithdrawChain(c.code);
+                          setWithdrawCurrency(c.currencies[0]);
+                        }}
+                      >
+                        {c.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-muted-foreground mb-2">
+                    Currency
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {chainConfig?.currencies.map((cur) => (
+                      <button
+                        key={cur}
+                        type="button"
+                        className={`py-3 px-4 rounded-xl border font-bold transition-colors ${
+                          withdrawCurrency === cur
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-card/50 text-white border-white/10 hover:border-primary/50"
+                        }`}
+                        onClick={() => setWithdrawCurrency(cur)}
+                      >
+                        {cur}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="withdraw-address"
+                    className="block text-sm text-muted-foreground mb-2"
+                  >
+                    Destination Wallet Address
+                  </label>
                   <input
-                    id="custom-amount"
-                    type="number"
-                    min="10"
-                    max="10000"
-                    step="1"
-                    placeholder="0.00"
-                    value={customAmount}
-                    onChange={(e) => handleCustomChange(e.target.value)}
-                    className="w-full pl-8 pr-4 py-3 bg-card/50 border border-white/10 rounded-xl text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    id="withdraw-address"
+                    type="text"
+                    placeholder="0x... or your wallet address"
+                    value={withdrawAddress}
+                    onChange={(e) => setWithdrawAddress(e.target.value)}
+                    className="w-full px-4 py-3 bg-card/50 border border-white/10 rounded-xl text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
                   />
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between">
-                <button
-                  type="button"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors"
-                  onClick={goBack}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary flex items-center gap-2"
-                  disabled={!selectedAmount || selectedAmount < 1000}
-                  onClick={() => {
-                    if (selectedAmount && selectedAmount >= 1000) {
-                      setError(null);
-                      setStep("confirm");
-                    }
-                  }}
-                >
-                  Continue
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === "confirm" && (
-            <div>
-              <h2 className="text-xl font-bold text-white mb-6">
-                Confirm Deposit
-              </h2>
-
-              <div className="bg-card/50 border border-white/5 rounded-2xl p-6 backdrop-blur-xl mb-8">
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Method</span>
-                    <span className="text-white font-medium">
-                      {METHODS.find((m) => m.id === method)?.label ?? "—"}
+                <div>
+                  <label
+                    htmlFor="withdraw-amount"
+                    className="block text-sm text-muted-foreground mb-2"
+                  >
+                    Amount (USD)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
+                      $
                     </span>
+                    <input
+                      id="withdraw-amount"
+                      type="number"
+                      min="10"
+                      max="10000"
+                      step="1"
+                      placeholder="0.00"
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      className="w-full pl-8 pr-4 py-3 bg-card/50 border border-white/10 rounded-xl text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
                   </div>
-                  <div className="h-px bg-white/5" />
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Amount</span>
-                    <span className="text-2xl font-black text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]">
-                      {formatUSD(selectedAmount ?? 0)}
-                    </span>
-                  </div>
-                  <div className="h-px bg-white/5" />
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Processing</span>
-                    <span className="text-green-400 text-sm font-medium">
-                      Instant
-                    </span>
-                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Min $10 · Max $10,000 · {withdrawCurrency} sent 1:1 with USD
+                  </p>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <p className="text-xs text-muted-foreground">
+                  Funds are sent on-chain — verify your address carefully.
+                </p>
                 <button
                   type="button"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-white transition-colors"
-                  onClick={goBack}
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary flex items-center gap-2 shadow-[0_0_12px_rgba(234,179,8,0.3)] font-bold min-w-[160px] justify-center"
-                  disabled={processing}
-                  onClick={handleDeposit}
+                  className="btn btn-primary flex items-center gap-2 shadow-[0_0_12px_rgba(234,179,8,0.3)] font-bold min-w-[160px] justify-center w-full sm:w-auto"
+                  disabled={
+                    processing || !withdrawAddress.trim() || !withdrawAmount
+                  }
+                  onClick={handleWithdraw}
                   aria-busy={processing}
                 >
                   {processing ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
-                      Confirm Deposit
+                      Confirm Withdrawal
                       <Check className="h-4 w-4" />
                     </>
                   )}
@@ -549,139 +903,66 @@ export default function Cashier() {
               </div>
             </div>
           )}
-        </>
-      )}
 
-      {tab === "withdraw" && (
-        <div>
-          <h2 className="text-xl font-bold text-white mb-6">
-            Withdraw to Crypto Wallet
-          </h2>
+          <p className="text-xs text-muted-foreground text-center mt-10">
+            Must be 21+. Gambling problem? Call{" "}
+            <span className="text-white font-bold">1-800-589-9966</span>.
+          </p>
+        </div>
 
-          <div className="bg-card/50 border border-white/5 rounded-2xl p-6 backdrop-blur-xl mb-8 space-y-6">
-            <div>
-              <label className="block text-sm text-muted-foreground mb-2">
-                Blockchain
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {PAYOUT_CHAINS.map((c) => (
-                  <button
-                    key={c.code}
-                    type="button"
-                    className={`py-3 px-4 rounded-xl border font-bold transition-colors ${
-                      withdrawChain === c.code
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card/50 text-white border-white/10 hover:border-primary/50"
-                    }`}
-                    onClick={() => {
-                      setWithdrawChain(c.code);
-                      setWithdrawCurrency(c.currencies[0]);
-                    }}
-                  >
-                    {c.label}
-                  </button>
+        <div className="lg:col-span-1">
+          <div className="bg-card/50 border border-white/5 rounded-2xl p-5 backdrop-blur-xl">
+            <div className="flex items-center gap-2 mb-4">
+              <History className="h-5 w-5 text-primary" />
+              <h3 className="text-sm font-bold text-white">
+                Recent Transactions
+              </h3>
+            </div>
+
+            {txLoading ? (
+              <div className="space-y-3">
+                {[0, 1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-16 rounded-lg bg-white/5 animate-pulse"
+                  />
                 ))}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm text-muted-foreground mb-2">
-                Currency
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                {chainConfig?.currencies.map((cur) => (
-                  <button
-                    key={cur}
-                    type="button"
-                    className={`py-3 px-4 rounded-xl border font-bold transition-colors ${
-                      withdrawCurrency === cur
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : "bg-card/50 text-white border-white/10 hover:border-primary/50"
-                    }`}
-                    onClick={() => setWithdrawCurrency(cur)}
-                  >
-                    {cur}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label
-                htmlFor="withdraw-address"
-                className="block text-sm text-muted-foreground mb-2"
-              >
-                Destination Wallet Address
-              </label>
-              <input
-                id="withdraw-address"
-                type="text"
-                placeholder="0x... or your wallet address"
-                value={withdrawAddress}
-                onChange={(e) => setWithdrawAddress(e.target.value)}
-                className="w-full px-4 py-3 bg-card/50 border border-white/10 rounded-xl text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary font-mono text-sm"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="withdraw-amount"
-                className="block text-sm text-muted-foreground mb-2"
-              >
-                Amount (USD)
-              </label>
-              <div className="relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold">
-                  $
-                </span>
-                <input
-                  id="withdraw-amount"
-                  type="number"
-                  min="10"
-                  max="10000"
-                  step="1"
-                  placeholder="0.00"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  className="w-full pl-8 pr-4 py-3 bg-card/50 border border-white/10 rounded-xl text-white placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Min $10 · Max $10,000 · {withdrawCurrency} sent 1:1 with USD
+            ) : txHistory.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                No transactions yet. Make your first deposit!
               </p>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">
-              Funds are sent on-chain — verify your address carefully.
-            </p>
-            <button
-              type="button"
-              className="btn btn-primary flex items-center gap-2 shadow-[0_0_12px_rgba(234,179,8,0.3)] font-bold min-w-[160px] justify-center"
-              disabled={
-                processing || !withdrawAddress.trim() || !withdrawAmount
-              }
-              onClick={handleWithdraw}
-              aria-busy={processing}
-            >
-              {processing ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <>
-                  Confirm Withdrawal
-                  <Check className="h-4 w-4" />
-                </>
-              )}
-            </button>
+            ) : (
+              <div className="space-y-3">
+                {txHistory.map((tx) => (
+                  <div
+                    key={tx.reference_id}
+                    className="flex items-center justify-between p-3 rounded-lg bg-white/5 border border-white/5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium text-white">
+                        {formatUSD(tx.amount_usd ?? 0)}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {new Date(tx.created_at).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </p>
+                    </div>
+                    <span
+                      className={`text-xs font-medium ml-2 flex-shrink-0 ${statusColor(tx.status)}`}
+                    >
+                      {statusLabel(tx.status)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
-
-      <p className="text-xs text-muted-foreground text-center mt-10">
-        Must be 21+. Gambling problem? Call{" "}
-        <span className="text-white font-bold">1-800-589-9966</span>.
-      </p>
+      </div>
     </div>
   );
 }

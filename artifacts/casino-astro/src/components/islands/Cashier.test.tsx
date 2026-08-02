@@ -158,38 +158,60 @@ describe("Cashier", () => {
     expect(screen.getByText("Select Amount")).toBeInTheDocument();
   });
 
-  it("shows success state after deposit", async () => {
+  it("redirects to PayRam checkout URL on successful deposit", async () => {
+    const mockHref = { value: window.location.href };
+    Object.defineProperty(window, "location", {
+      value: {
+        ...window.location,
+        set href(val: string) {
+          mockHref.value = val;
+        },
+        get href() {
+          return mockHref.value;
+        },
+      },
+      writable: true,
+      configurable: true,
+    });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ url: "https://payram.test/checkout/abc" }),
+    });
+
     const user = userEvent.setup();
     render(<Cashier />);
 
-    // Complete the flow
     await user.click(screen.getByLabelText("Deposit via Credit / Debit Card"));
     await user.click(screen.getByText("$100"));
     await user.click(screen.getByText("Continue"));
     await user.click(screen.getByRole("button", { name: "Confirm Deposit" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Deposit Submitted")).toBeInTheDocument();
+      expect(mockHref.value).toBe("https://payram.test/checkout/abc");
     });
-    expect(screen.getByText("Make Another Deposit")).toBeInTheDocument();
   });
 
-  it("resets to method step after making another deposit", async () => {
+  it("shows error when checkout returns no URL", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ error: "PayRam unavailable" }),
+    });
+
     const user = userEvent.setup();
     render(<Cashier />);
 
-    // Complete the flow
     await user.click(screen.getByLabelText("Deposit via Bank Transfer"));
     await user.click(screen.getByText("$100"));
     await user.click(screen.getByText("Continue"));
     await user.click(screen.getByRole("button", { name: "Confirm Deposit" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Deposit Submitted")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Payment provider error. Please try again or use a different method.",
+        ),
+      ).toBeInTheDocument();
     });
-
-    await user.click(screen.getByText("Make Another Deposit"));
-    expect(screen.getByText("Choose Deposit Method")).toBeInTheDocument();
   });
 
   it("shows network error on fetch failure", async () => {
@@ -205,7 +227,9 @@ describe("Cashier", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByText("Network error. Please try again."),
+        screen.getByText(
+          "Connection issue. Check your internet and try again.",
+        ),
       ).toBeInTheDocument();
     });
   });

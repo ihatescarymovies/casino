@@ -1,0 +1,48 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const referenceId = Astro.url.searchParams.get("reference_id") ?? "";
+---
+
+<BaseLayout
+  title="Deposit Cancelled — Charter & Oak"
+  description="Your deposit was cancelled."
+>
+  <div class="container mx-auto px-4 py-20 max-w-2xl">
+    <div class="text-center">
+      <div
+        class="mx-auto mb-6 h-20 w-20 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-10 w-10 text-red-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-white mb-3">Deposit Cancelled</h1>
+      <p class="text-muted-foreground mb-8">
+        Your deposit was cancelled. No charges were made.
+      </p>
+      {referenceId && (
+        <p class="text-xs text-muted-foreground mb-8 font-mono">
+          Reference: {referenceId}
+        </p>
+      )}
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <a href="/cashier" class="btn btn-primary">Try Again</a>
+        <a href="/" class="text-muted-foreground hover:text-white transition-colors">
+          Back to Home
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>

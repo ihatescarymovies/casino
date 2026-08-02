@@ -1,0 +1,45 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const referenceId = Astro.url.searchParams.get("reference_id") ?? "";
+const amount = Astro.url.searchParams.get("amount") ?? "";
+---
+
+<BaseLayout
+  title="Deposit Successful — Charter & Oak"
+  description="Your deposit has been confirmed."
+>
+  <div class="container mx-auto px-4 py-20 max-w-2xl">
+    <div class="text-center">
+      <div
+        class="mx-auto mb-6 h-20 w-20 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          class="h-10 w-10 text-green-400"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold text-white mb-3">Deposit Successful!</h1>
+      <p class="text-muted-foreground mb-2">
+        Your deposit{amount ? ` of $${amount}` : ""} has been confirmed and added to your account.
+      </p>
+      {referenceId && (
+        <p class="text-xs text-muted-foreground mb-8 font-mono">
+          Reference: {referenceId}
+        </p>
+      )}
+      <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mt-8">
+        <a href="/cashier" class="btn btn-primary">Return to Cashier</a>
+        <a href="/" class="text-muted-foreground hover:text-white transition-colors">
+          Back to Home
+        </a>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
