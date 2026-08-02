@@ -83,7 +83,9 @@ export interface GameEngine {
     result: GameResult;
     payout: number;
     gameDetails?: Record<string, unknown>;
-  }>;
+  };
+
+  resolveRound(roundId: number): Promise<GameRoundData>;
 }
 
 /* ── Abstract Base Class ────────────────────────────────────────────── */
