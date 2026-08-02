@@ -95,6 +95,13 @@ const DEPOSIT_PACKAGES = [
     tier: "starter",
   },
   {
+    id: "standard",
+    name: "Standard Pack",
+    description: "A balanced starting point for regular play",
+    amountInUSD: 50,
+    tier: "standard",
+  },
+  {
     id: "pro",
     name: "Player Pack",
     description: "The most popular deposit for regular players",

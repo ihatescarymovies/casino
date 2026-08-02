@@ -97,6 +97,19 @@ const mockEngine: GameEngine = {
       payout: 1000,
     };
   },
+  async resolveRound() {
+    return {
+      roundId: 42,
+      gameType: "slots",
+      betAmount: 500,
+      clientSeed: "test-client-seed",
+      serverSeedHash: "abc123hash",
+      nonce: 0,
+      state: "completed" as any,
+      result: "win" as any,
+      payout: 1000,
+    };
+  },
 };
 
 /* ── Helpers ────────────────────────────────────────────────────────── */

@@ -38,6 +38,7 @@ export interface GameConfig {
   maxBet: number;
   rtp: number;
   rules: Record<string, unknown>;
+  instant?: boolean;
 }
 
 export interface GameRoundData {
@@ -83,6 +84,8 @@ export interface GameEngine {
     payout: number;
     gameDetails?: Record<string, unknown>;
   }>;
+
+  resolveRound(roundId: number): Promise<GameRoundData>;
 }
 
 /* ── Abstract Base Class ────────────────────────────────────────────── */
@@ -227,6 +230,7 @@ export abstract class BaseGameEngine implements GameEngine {
     const [updated] = await db
       .update(schema.gameRoundsTable)
       .set({
+        status: "completed",
         result: gameResult.result,
         payout: gameResult.payout,
         details: gameResult.gameDetails,

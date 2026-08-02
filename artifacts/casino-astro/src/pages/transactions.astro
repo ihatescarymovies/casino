@@ -5,6 +5,7 @@ import { IslandErrorBoundary } from "@/components/IslandErrorBoundary.tsx";
 ---
 
 <BaseLayout title="Transaction History — Charter & Oak" description="View your deposits, withdrawals, bets, wins, and bonuses.">
+  <div class="container mx-auto max-w-5xl px-4 pt-8"><a class="text-sm text-primary hover:underline" href="/fairness">Public fairness verifier →</a></div>
   <IslandErrorBoundary client:load>
     <Transactions client:load />
   </IslandErrorBoundary>

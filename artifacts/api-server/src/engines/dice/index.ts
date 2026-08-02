@@ -80,6 +80,7 @@ export class DiceEngine extends BaseGameEngine {
     minBet: 1,
     maxBet: 100000,
     rtp: 0.97,
+    instant: true,
     rules: {
       dice: 2,
       sides: 6,
