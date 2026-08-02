@@ -9,6 +9,7 @@
  */
 
 import { Router, type Request, type Response } from "express";
+import { createHash, timingSafeEqual } from "node:crypto";
 import { eq, desc } from "drizzle-orm";
 import { db } from "@workspace/db";
 import * as schema from "@workspace/db";
@@ -25,6 +26,7 @@ import {
 import { engineRegistry } from "../engines";
 import * as hashChain from "../lib/hash-chain";
 import { GameRoundError } from "../lib/errors";
+import type { GameRoundData } from "../lib/game-engine";
 import * as wallet from "../lib/wallet";
 import * as demoWallet from "../lib/demo-wallet";
 
@@ -92,8 +94,16 @@ router.post(
         gameParams,
       });
 
+      // Auto-resolve instant games (slots, dice, plinko, roulette)
+      // so the round status is "completed" before the client verifies fairness.
+      let resolvedData: GameRoundData | undefined;
+      if (engine.config.instant) {
+        resolvedData = await engine.resolveRound(roundData.roundId);
+      }
+
       const balanceAfter = await wallet.getBalance(userId);
       balanceInfo = { balance: balanceAfter.balance };
+      roundData = resolvedData ?? roundData;
     }
 
     res.status(200).json({
@@ -247,40 +257,126 @@ router.post("/:id", async (req: Request, res: Response) => {
   });
 });
 
-/* ── POST /api/rounds/:id/verify — Verify fairness ─────────────────── */
+/* ── GET /api/rounds/:id/fairness — Sanitized fairness data ─────────── */
+router.get("/:id/fairness", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const roundId = Number(req.params.id);
+  if (!Number.isSafeInteger(roundId) || roundId < 1) {
+    res.status(400).json({ error: "Invalid round ID" });
+    return;
+  }
+  const [round] = await db
+    .select()
+    .from(schema.gameRoundsTable)
+    .where(eq(schema.gameRoundsTable.id, roundId));
+  if (!round) throw new GameRoundError(`Round ${roundId} not found`, 404);
+  if (round.userId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  const [chain] = round.serverSeedHash
+    ? await db
+        .select()
+        .from(schema.hashChainsTable)
+        .where(eq(schema.hashChainsTable.serverSeedHash, round.serverSeedHash))
+    : [];
+  const resolved = round.status !== "pending" && round.result !== "pending";
+  res.status(200).json({
+    roundId: round.id,
+    gameType: round.gameType,
+    status: round.status,
+    demo: round.isDemo ?? false,
+    commitment: round.serverSeedHash,
+    clientSeed: round.clientSeed,
+    nonce: round.nonce,
+    chain: chain ? { id: chain.id, previousHash: chain.previousHash } : null,
+    serverSeed: resolved ? (chain?.serverSeed ?? null) : null,
+    params: round.details,
+    result: resolved ? round.result : null,
+    payout: resolved ? round.payout : null,
+    algorithm: { name: "commitment-sha256", version: "1", replay: false },
+  });
+});
 
+/* ── POST /api/rounds/:id/verify — Verify fairness ─────────────────── */
 router.post(
   "/:id/verify",
   validate(VerifyRoundBody),
   async (req: Request, res: Response) => {
     const userId = requireAuth(req, res);
     if (!userId) return;
-
-    const { serverSeed, roundId } = req.body;
-
+    const roundId = Number(req.params.id); // URL is canonical; body roundId is ignored.
+    if (!Number.isSafeInteger(roundId) || roundId < 1) {
+      res.status(400).json({ error: "Invalid round ID" });
+      return;
+    }
     const [round] = await db
       .select()
       .from(schema.gameRoundsTable)
       .where(eq(schema.gameRoundsTable.id, roundId));
-
-    if (!round) {
-      throw new GameRoundError(`Round ${roundId} not found`, 404);
-    }
-
+    if (!round) throw new GameRoundError(`Round ${roundId} not found`, 404);
     if (round.userId !== userId) {
       res.status(403).json({ error: "Forbidden" });
       return;
     }
+    if (round.status === "pending" || round.result === "pending") {
+      res
+        .status(409)
+        .json({ error: "Pending rounds cannot be verified or reveal a seed" });
+      return;
+    }
 
-    const verification = await hashChain.verifyRound(serverSeed);
-
-    // Update round's verified flag
+    const { serverSeed } = req.body;
+    if (
+      typeof serverSeed !== "string" ||
+      serverSeed.length < 1 ||
+      serverSeed.length > 128
+    ) {
+      res.status(400).json({ error: "Invalid server seed" });
+      return;
+    }
+    const computedHash = createHash("sha256")
+      .update(serverSeed, "utf8")
+      .digest("hex");
+    const expectedHash = round.serverSeedHash ?? "";
+    const commitmentMatch =
+      computedHash.length === expectedHash.length &&
+      timingSafeEqual(Buffer.from(computedHash), Buffer.from(expectedHash));
+    const [chain] = await db
+      .select()
+      .from(schema.hashChainsTable)
+      .where(eq(schema.hashChainsTable.serverSeed, serverSeed));
+    // Hash-chain seeds are encoded as gameType:chainId:index:random. The
+    // round's nonce is assigned from that index in game-engine.ts; it is not
+    // a value embedded in the seed as an independent game-round nonce.
+    const seedParts = chain?.serverSeed.split(":");
+    const parsedIndex = seedParts?.length === 4 ? Number(seedParts[2]) : NaN;
+    const fieldMatches = {
+      game: seedParts?.length === 4 && seedParts[0] === round.gameType,
+      nonce:
+        Number.isSafeInteger(parsedIndex) && parsedIndex === (round.nonce ?? 0),
+    };
+    const chainMatch = Boolean(chain && chain.serverSeedHash === expectedHash);
+    const verified =
+      commitmentMatch && chainMatch && fieldMatches.game && fieldMatches.nonce;
     await db
       .update(schema.gameRoundsTable)
-      .set({ verified: verification.verified })
+      .set({ verified })
       .where(eq(schema.gameRoundsTable.id, roundId));
-
-    res.status(200).json(verification);
+    res.status(200).json({
+      verified,
+      commitmentMatch,
+      chainMatch,
+      fieldMatches,
+      computedHash,
+      expectedHash,
+      replay: { implemented: false, resultMatch: null, payoutMatch: null },
+      warnings: [
+        "Commitment and encoded game/index checks passed; deterministic game replay is not implemented yet.",
+        "The database does not persist the encoded chain ID on the round, so chain ID continuity is not validated.",
+      ],
+    });
   },
 );
 
