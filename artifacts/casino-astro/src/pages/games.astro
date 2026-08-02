@@ -8,8 +8,10 @@ import type { Game } from "@workspace/api-client-react";
 
 type Category = { name: string; count: number };
 
-const categories = await apiFetch<Category[]>("/api/games/categories");
-const games = await apiFetch<Game[]>("/api/games");
+const [categories, games] = await Promise.all([
+  apiFetch<Category[]>("/api/games/categories"),
+  apiFetch<Game[]>("/api/games"),
+]);
 ---
 
 <BaseLayout title="Casino Lobby — Charter & Oak" description="Browse our full collection of slots, table games, and live dealer experiences.">
@@ -21,9 +23,9 @@ const games = await apiFetch<Game[]>("/api/games");
       </div>
     </div>
 
-    <IslandErrorBoundary client:load>
-      <QueryProvider client:load>
-        <GamesFilter client:load categories={categories ?? []} games={games ?? []} />
+    <IslandErrorBoundary client:idle>
+      <QueryProvider client:idle>
+        <GamesFilter client:idle categories={categories ?? []} games={games ?? []} />
       </QueryProvider>
     </IslandErrorBoundary>
   </main>

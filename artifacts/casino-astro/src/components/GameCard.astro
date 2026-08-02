@@ -17,7 +17,7 @@ const { id, name, category, provider, imageUrl, isFeatured, isHot, isNew } = Ast
 const image = imageUrl || getGameFallbackImage(category);
 ---
 
-<a href={`/games/${id}`} class="group block">
+<div class="group block">
   <div class="casino-card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-primary/50 cursor-pointer">
     <div class="aspect-[4/3] w-full overflow-hidden relative">
       <img
@@ -63,4 +63,4 @@ const image = imageUrl || getGameFallbackImage(category);
       </div>
     </div>
   </div>
-</a>
+</div>
