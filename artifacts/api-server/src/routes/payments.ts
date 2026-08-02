@@ -3,6 +3,19 @@ import { getPayramClient } from "../lib/payramClient";
 import { WebhookHandlers } from "../lib/webhookHandlers";
 import { logger } from "../lib/logger";
 import { recordPaymentCreation } from "../lib/metrics";
+import { auditLog, getClientIp } from "../lib/auditLog";
+import {
+  checkoutBodySchema,
+  shareableLinkBodySchema,
+  withdrawBodySchema,
+  validateBody,
+} from "../lib/paymentValidation";
+import {
+  checkoutLimiter,
+  shareableLinkLimiter,
+  withdrawLimiter,
+  webhookLimiter,
+} from "../middleware/rateLimitMiddleware";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
@@ -147,121 +160,150 @@ router.get("/deposit-packages", (_req, res) => {
   ]);
 });
 
-router.post("/checkout", async (req: any, res) => {
-  try {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+router.post(
+  "/checkout",
+  checkoutLimiter,
+  validateBody(checkoutBodySchema),
+  async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        auditLog({
+          userId: undefined,
+          action: "checkout",
+          ip: getClientIp(req),
+          result: "denied",
+          details: { reason: "not authenticated" },
+        });
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
 
-    const { priceId } = req.body;
-    if (!priceId) {
-      res.status(400).json({ error: "priceId required" });
-      return;
-    }
+      const { priceId } = req.body as { priceId: string };
 
-    const isMin = priceId === MIN_DEPOSIT_PACKAGE_ID;
-    const pkg = isMin
-      ? { id: MIN_DEPOSIT_PACKAGE_ID, amountInUSD: MIN_DEPOSIT_AMOUNT_USD }
-      : DEPOSIT_PACKAGES.find((p) => p.id === priceId);
-    if (!pkg) {
-      res.status(400).json({ error: "Invalid package" });
-      return;
-    }
+      const isMin = priceId === MIN_DEPOSIT_PACKAGE_ID;
+      const pkg = isMin
+        ? { id: MIN_DEPOSIT_PACKAGE_ID, amountInUSD: MIN_DEPOSIT_AMOUNT_USD }
+        : DEPOSIT_PACKAGES.find((p) => p.id === priceId);
+      if (!pkg) {
+        res.status(400).json({ error: "Invalid package" });
+        return;
+      }
 
-    const payram = getPayramClient();
-    const user = req.user;
+      const payram = getPayramClient();
+      const user = req.user;
 
-    const checkout = await payram.payments.initiatePayment({
-      customerEmail: user.email ?? undefined,
-      customerId: String(user.id),
-      amountInUSD: pkg.amountInUSD,
-    });
+      const checkout = await payram.payments.initiatePayment({
+        customerEmail: user.email ?? undefined,
+        customerId: String(user.id),
+        amountInUSD: pkg.amountInUSD,
+      });
 
-    await db.execute(
-      sql`INSERT INTO payment_sessions (reference_id, invoice_id, user_id, amount_usd, status, created_at, updated_at)
+      await db.execute(
+        sql`INSERT INTO payment_sessions (reference_id, invoice_id, user_id, amount_usd, status, created_at, updated_at)
           VALUES (${checkout.reference_id}, ${checkout.reference_id}, ${user.id}, ${pkg.amountInUSD}, 'open', NOW(), NOW())
           ON CONFLICT (reference_id) DO NOTHING`,
-    );
+      );
 
-    // Schedule a fallback poll 60s after checkout creation. If the webhook
-    // was missed or lost, this ensures payment status eventually converges.
-    const refId = checkout.reference_id;
-    setTimeout(async () => {
-      try {
-        const remote = await fetchPayramPaymentStatus(refId);
-        if (!remote) return;
-        const dbStatus = mapPayramStatus(remote.status);
-        if (!TERMINAL_DB_STATUSES.includes(dbStatus)) return;
-        await db.execute(
-          sql`UPDATE payment_sessions
+      // Schedule a fallback poll 60s after checkout creation. If the webhook
+      // was missed or lost, this ensures payment status eventually converges.
+      const refId = checkout.reference_id;
+      setTimeout(async () => {
+        try {
+          const remote = await fetchPayramPaymentStatus(refId);
+          if (!remote) return;
+          const dbStatus = mapPayramStatus(remote.status);
+          if (!TERMINAL_DB_STATUSES.includes(dbStatus)) return;
+          await db.execute(
+            sql`UPDATE payment_sessions
               SET status = ${dbStatus}, updated_at = NOW()
               WHERE reference_id = ${refId} AND status NOT IN ('completed', 'partial', 'cancelled')`,
-        );
-        logger.info(
-          { reference_id: refId, status: remote.status },
-          "Fallback poll updated payment status",
-        );
-      } catch (err) {
-        logger.error({ err, reference_id: refId }, "Fallback poll failed");
+          );
+          logger.info(
+            { reference_id: refId, status: remote.status },
+            "Fallback poll updated payment status",
+          );
+        } catch (err) {
+          logger.error({ err, reference_id: refId }, "Fallback poll failed");
+        }
+      }, FALLBACK_POLL_DELAY_MS);
+
+      recordPaymentCreation(priceId, "success");
+      res.json({ url: checkout.url });
+    } catch (err: any) {
+      logger.error({ err }, "Checkout error");
+      recordPaymentCreation(req.body?.priceId ?? "unknown", "failed");
+      res.status(500).json({ error: "Failed to create checkout session" });
+    }
+  },
+);
+
+router.post(
+  "/shareable-link",
+  shareableLinkLimiter,
+  validateBody(shareableLinkBodySchema),
+  async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        auditLog({
+          userId: undefined,
+          action: "shareable-link",
+          ip: getClientIp(req),
+          result: "denied",
+          details: { reason: "not authenticated" },
+        });
+        res.status(401).json({ error: "Unauthorized" });
+        return;
       }
-    }, FALLBACK_POLL_DELAY_MS);
+      if (!isAdmin(req.user)) {
+        auditLog({
+          userId: String(req.user?.id),
+          action: "shareable-link",
+          ip: getClientIp(req),
+          result: "denied",
+          details: { reason: "not admin" },
+        });
+        res.status(403).json({ error: "Admin role required" });
+        return;
+      }
 
-    recordPaymentCreation(priceId, "success");
-    res.json({ url: checkout.url });
-  } catch (err: any) {
-    logger.error({ err }, "Checkout error");
-    recordPaymentCreation(req.body?.priceId ?? "unknown", "failed");
-    res.status(500).json({ error: "Failed to create checkout session" });
-  }
-});
+      const { amountInUSD } = req.body as { amountInUSD: number };
 
-router.post("/shareable-link", async (req: any, res) => {
-  try {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
-    if (!isAdmin(req.user)) {
-      res.status(403).json({ error: "Admin role required" });
-      return;
-    }
-
-    const { amountInUSD } = req.body ?? {};
-    const amount = Number(amountInUSD);
-    if (
-      !Number.isFinite(amount) ||
-      amount < MIN_DEPOSIT_AMOUNT_USD ||
-      amount > 10000
-    ) {
-      res.status(400).json({
-        error: `amountInUSD must be between ${MIN_DEPOSIT_AMOUNT_USD} and 10000`,
+      const payram = getPayramClient();
+      const checkout = await payram.payments.initiatePayment({
+        // Shareable link is user-agnostic; use placeholder customer fields.
+        // The PayRam backend accepts these for anonymous/shareable checkout sessions.
+        customerEmail: `shareable-link@casino.local`,
+        customerId: `shareable-link-${Date.now()}`,
+        amountInUSD,
       });
-      return;
-    }
 
-    const payram = getPayramClient();
-    const checkout = await payram.payments.initiatePayment({
-      // Shareable link is user-agnostic; use placeholder customer fields.
-      // The PayRam backend accepts these for anonymous/shareable checkout sessions.
-      customerEmail: `shareable-link@casino.local`,
-      customerId: `shareable-link-${Date.now()}`,
-      amountInUSD: amount,
-    });
-
-    // Persist with user_id=NULL and special reference_id prefix for traceability.
-    await db.execute(
-      sql`INSERT INTO payment_sessions (reference_id, invoice_id, user_id, amount_usd, status, created_at, updated_at)
-          VALUES (${checkout.reference_id}, ${checkout.reference_id}, NULL, ${amount}, 'open', NOW(), NOW())
+      // Persist with user_id=NULL and special reference_id prefix for traceability.
+      await db.execute(
+        sql`INSERT INTO payment_sessions (reference_id, invoice_id, user_id, amount_usd, status, created_at, updated_at)
+          VALUES (${checkout.reference_id}, ${checkout.reference_id}, NULL, ${amountInUSD}, 'open', NOW(), NOW())
           ON CONFLICT (reference_id) DO NOTHING`,
-    );
+      );
 
-    res.json({ url: checkout.url, reference_id: checkout.reference_id });
-  } catch (err: any) {
-    logger.error({ err }, "Shareable link error");
-    res.status(500).json({ error: "Failed to create shareable link" });
-  }
-});
+      auditLog({
+        userId: String(req.user?.id),
+        action: "shareable-link",
+        ip: getClientIp(req),
+        result: "success",
+        details: { amountInUSD },
+      });
+      res.json({ url: checkout.url, reference_id: checkout.reference_id });
+    } catch (err: any) {
+      logger.error({ err }, "Shareable link error");
+      auditLog({
+        userId: String(req.user?.id),
+        action: "shareable-link",
+        ip: getClientIp(req),
+        result: "failed",
+      });
+      res.status(500).json({ error: "Failed to create shareable link" });
+    }
+  },
+);
 
 router.get("/status/:referenceId", async (req: any, res) => {
   try {
@@ -338,42 +380,46 @@ router.get("/history", async (req: any, res) => {
  * is needed, but we still read the stream directly to avoid express.json()
  * interference on this route.
  */
-router.post("/payram-webhook", (req: Request, res: Response) => {
-  try {
-    if (!WebhookHandlers.verifyWebhookApiKey(req.headers)) {
-      logger.warn(
-        { headers: req.headers },
-        "Webhook rejected: invalid API key",
-      );
-      res.status(401).json({ error: "Invalid API key" });
-      return;
-    }
+router.post(
+  "/payram-webhook",
+  webhookLimiter,
+  (req: Request, res: Response) => {
+    try {
+      if (!WebhookHandlers.verifyWebhookApiKey(req.headers)) {
+        logger.warn(
+          { headers: req.headers },
+          "Webhook rejected: invalid API key",
+        );
+        res.status(401).json({ error: "Invalid API key" });
+        return;
+      }
 
-    const payload: Record<string, any> = req.body ?? {};
-    logger.info(
-      { reference_id: payload.reference_id, status: payload.status },
-      "Webhook received",
-    );
-    withRetry(() => WebhookHandlers.processPayramWebhook(payload))
-      .then(() => {
-        logger.info(
-          { reference_id: payload.reference_id },
-          "Webhook processed",
-        );
-        res.status(200).json({ received: true });
-      })
-      .catch((err: any) => {
-        logger.error(
-          { err, reference_id: payload.reference_id },
-          "Webhook processing failed after retries",
-        );
-        res.status(500).json({ error: "Webhook processing error" });
-      });
-  } catch (err: any) {
-    logger.error({ err }, "Webhook handler error");
-    res.status(500).json({ error: "Webhook processing error" });
-  }
-});
+      const payload: Record<string, any> = req.body ?? {};
+      logger.info(
+        { reference_id: payload.reference_id, status: payload.status },
+        "Webhook received",
+      );
+      withRetry(() => WebhookHandlers.processPayramWebhook(payload))
+        .then(() => {
+          logger.info(
+            { reference_id: payload.reference_id },
+            "Webhook processed",
+          );
+          res.status(200).json({ received: true });
+        })
+        .catch((err: any) => {
+          logger.error(
+            { err, reference_id: payload.reference_id },
+            "Webhook processing failed after retries",
+          );
+          res.status(500).json({ error: "Webhook processing error" });
+        });
+    } catch (err: any) {
+      logger.error({ err }, "Webhook handler error");
+      res.status(500).json({ error: "Webhook processing error" });
+    }
+  },
+);
 
 const WITHDRAWAL_MIN_CENTS = 1000;
 const WITHDRAWAL_MAX_CENTS = 1_000_000;
@@ -392,103 +438,145 @@ function isValidAddress(addr: string): boolean {
   return false;
 }
 
-router.post("/withdraw", async (req: any, res) => {
-  try {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+router.post(
+  "/withdraw",
+  withdrawLimiter,
+  validateBody(withdrawBodySchema),
+  async (req: any, res) => {
+    try {
+      if (!req.isAuthenticated()) {
+        auditLog({
+          userId: "unknown",
+          action: "withdraw",
+          ip: getClientIp(req),
+          result: "denied",
+          details: { reason: "Not authenticated" },
+        });
+        res.status(401).json({ error: "Unauthorized" });
+        return;
+      }
 
-    const { blockchainCode, currencyCode, amountUsd, toAddress } =
-      req.body ?? {};
-    const chain = String(blockchainCode ?? "").toUpperCase();
-    const currency = String(currencyCode ?? "").toUpperCase();
-    const amountCents = Math.round(Number(amountUsd));
+      const { blockchainCode, currencyCode, amountUsd, toAddress } =
+        req.body as {
+          blockchainCode: string;
+          currencyCode: string;
+          amountUsd: number;
+          toAddress: string;
+        };
+      const chain = blockchainCode.toUpperCase();
+      const currency = currencyCode.toUpperCase();
+      const amountCents = Math.round(Number(amountUsd));
 
-    if (!chain || !currency || !amountUsd || !toAddress) {
-      res.status(400).json({
-        error:
-          "blockchainCode, currencyCode, amountUsd, and toAddress are required",
+      if (
+        !SUPPORTED_PAYOUT_CHAINS[chain] ||
+        !SUPPORTED_PAYOUT_CHAINS[chain].includes(currency)
+      ) {
+        auditLog({
+          userId: String(req.user.id),
+          action: "withdraw",
+          ip: getClientIp(req),
+          result: "denied",
+          details: { chain, currency, reason: "Unsupported chain/currency" },
+        });
+        res
+          .status(400)
+          .json({ error: `Unsupported chain/currency: ${chain}/${currency}` });
+        return;
+      }
+      if (!isValidAddress(String(toAddress))) {
+        auditLog({
+          userId: String(req.user.id),
+          action: "withdraw",
+          ip: getClientIp(req),
+          result: "denied",
+          details: { reason: "Invalid destination wallet address" },
+        });
+        res.status(400).json({ error: "Invalid destination wallet address" });
+        return;
+      }
+
+      const user = req.user;
+
+      const walletRows = await db.execute(
+        sql`SELECT id, balance FROM wallets WHERE user_id = ${user.id} LIMIT 1`,
+      );
+      const wallet = walletRows.rows[0] as
+        | { id: number; balance: number }
+        | undefined;
+      if (!wallet || wallet.balance < amountCents) {
+        auditLog({
+          userId: String(user.id),
+          action: "withdraw",
+          ip: getClientIp(req),
+          result: "denied",
+          details: { reason: "Insufficient balance" },
+        });
+        res.status(402).json({ error: "Insufficient balance" });
+        return;
+      }
+
+      const tokenAmount = String(amountCents / 100);
+
+      const payram = getPayramClient();
+      const payout = await payram.payouts.createPayout({
+        email: user.email ?? `user-${user.id}@casino.local`,
+        blockchainCode: chain as any,
+        currencyCode: currency as any,
+        amount: tokenAmount,
+        toAddress: String(toAddress),
+        customerID: String(user.id),
       });
-      return;
-    }
-    if (
-      !SUPPORTED_PAYOUT_CHAINS[chain] ||
-      !SUPPORTED_PAYOUT_CHAINS[chain].includes(currency)
-    ) {
-      res
-        .status(400)
-        .json({ error: `Unsupported chain/currency: ${chain}/${currency}` });
-      return;
-    }
-    if (
-      !Number.isFinite(amountCents) ||
-      amountCents < WITHDRAWAL_MIN_CENTS ||
-      amountCents > WITHDRAWAL_MAX_CENTS
-    ) {
-      res.status(400).json({
-        error: `amountUsd must be between $${WITHDRAWAL_MIN_CENTS / 100} and $${WITHDRAWAL_MAX_CENTS / 100}`,
+
+      await db.execute(
+        sql`INSERT INTO withdrawal_requests (user_id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, created_at, updated_at)
+            VALUES (${user.id}, ${payout.id ?? null}, ${chain}, ${currency}, ${amountCents}, ${String(toAddress)}, ${payout.status ?? "pending"}, ${payout.txHash ?? null}, ${payout.fee ?? null}, NOW(), NOW())`,
+      );
+
+      const newBalance = wallet.balance - amountCents;
+      await db.execute(
+        sql`UPDATE wallets SET balance = ${newBalance}, updated_at = NOW() WHERE id = ${wallet.id}`,
+      );
+      await db.execute(
+        sql`INSERT INTO transactions (wallet_id, user_id, type, amount, balance_before, balance_after, status, reference_id, description, created_at)
+            VALUES (${wallet.id}, ${user.id}, 'withdrawal', ${-amountCents}, ${wallet.balance}, ${newBalance}, 'completed', ${String(payout.id ?? "")}, 'Crypto withdrawal via PayRam', NOW())`,
+      );
+
+      auditLog({
+        userId: String(user.id),
+        action: "withdraw",
+        ip: getClientIp(req),
+        result: "success",
+        details: {
+          payoutId: payout.id,
+          amountCents,
+          chain,
+          currency,
+          toAddress,
+        },
       });
-      return;
+
+      res.json({
+        id: payout.id,
+        status: payout.status ?? "pending",
+        amountUsd: amountCents,
+        blockchainCode: chain,
+        currencyCode: currency,
+        toAddress,
+        txHash: payout.txHash ?? null,
+      });
+    } catch (err: any) {
+      logger.error({ err }, "Withdrawal error");
+      auditLog({
+        userId: req.user ? String(req.user.id) : "unknown",
+        action: "withdraw",
+        ip: getClientIp(req),
+        result: "failed",
+        details: err.message ?? "Unknown error",
+      });
+      res.status(500).json({ error: "Failed to process withdrawal" });
     }
-    if (!isValidAddress(String(toAddress))) {
-      res.status(400).json({ error: "Invalid destination wallet address" });
-      return;
-    }
-
-    const user = req.user;
-
-    const walletRows = await db.execute(
-      sql`SELECT id, balance FROM wallets WHERE user_id = ${user.id} LIMIT 1`,
-    );
-    const wallet = walletRows.rows[0] as
-      | { id: number; balance: number }
-      | undefined;
-    if (!wallet || wallet.balance < amountCents) {
-      res.status(402).json({ error: "Insufficient balance" });
-      return;
-    }
-
-    const tokenAmount = String(amountCents / 100);
-
-    const payram = getPayramClient();
-    const payout = await payram.payouts.createPayout({
-      email: user.email ?? `user-${user.id}@casino.local`,
-      blockchainCode: chain as any,
-      currencyCode: currency as any,
-      amount: tokenAmount,
-      toAddress: String(toAddress),
-      customerID: String(user.id),
-    });
-
-    await db.execute(
-      sql`INSERT INTO withdrawal_requests (user_id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, created_at, updated_at)
-          VALUES (${user.id}, ${payout.id ?? null}, ${chain}, ${currency}, ${amountCents}, ${String(toAddress)}, ${payout.status ?? "pending"}, ${payout.txHash ?? null}, ${payout.fee ?? null}, NOW(), NOW())`,
-    );
-
-    const newBalance = wallet.balance - amountCents;
-    await db.execute(
-      sql`UPDATE wallets SET balance = ${newBalance}, updated_at = NOW() WHERE id = ${wallet.id}`,
-    );
-    await db.execute(
-      sql`INSERT INTO transactions (wallet_id, user_id, type, amount, balance_before, balance_after, status, reference_id, description, created_at)
-          VALUES (${wallet.id}, ${user.id}, 'withdrawal', ${-amountCents}, ${wallet.balance}, ${newBalance}, 'completed', ${String(payout.id ?? "")}, 'Crypto withdrawal via PayRam', NOW())`,
-    );
-
-    res.json({
-      id: payout.id,
-      status: payout.status ?? "pending",
-      amountUsd: amountCents,
-      blockchainCode: chain,
-      currencyCode: currency,
-      toAddress,
-      txHash: payout.txHash ?? null,
-    });
-  } catch (err: any) {
-    logger.error({ err }, "Withdrawal error");
-    res.status(500).json({ error: "Failed to process withdrawal" });
-  }
-});
+  },
+);
 
 router.get("/withdrawals", async (req: any, res) => {
   try {

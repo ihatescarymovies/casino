@@ -7,6 +7,7 @@ import { logger } from "./lib/logger";
 import { authMiddleware } from "./middlewares/authMiddleware";
 import { errorHandler } from "./middleware/errorHandler";
 import { metricsMiddleware } from "./middleware/metricsMiddleware";
+import { securityHeaders } from "./middleware/securityHeaders";
 import { register } from "./lib/metrics";
 
 const app: Express = express();
@@ -25,6 +26,7 @@ app.use(
   }),
 );
 
+app.use(securityHeaders);
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
 app.use(express.json());
