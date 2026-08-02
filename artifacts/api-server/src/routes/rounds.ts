@@ -375,8 +375,6 @@ router.post(
       res.status(403).json({ error: "Forbidden" });
       return;
     }
-      return;
-    }
 
     const { serverSeed } = req.body;
     if (
