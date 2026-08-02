@@ -27,6 +27,7 @@ import * as hashChain from "../lib/hash-chain";
 import { GameRoundError } from "../lib/errors";
 import * as wallet from "../lib/wallet";
 import * as demoWallet from "../lib/demo-wallet";
+import { verifyReceipt } from "../lib/fairness";
 
 const router = Router();
 
@@ -161,7 +162,61 @@ router.get("/:id", async (req: Request, res: Response) => {
     return;
   }
 
-  res.status(200).json(round);
+  res.status(200).json({
+    ...round,
+    receipt:
+      round.status === "completed"
+        ? {
+            game: round.gameType,
+            roundId: round.id,
+            timestamp: round.createdAt?.toISOString() ?? null,
+            serverSeedHash: round.serverSeedHash,
+            clientSeed: round.clientSeed,
+            nonce: round.nonce,
+            outcome: round.result,
+            details: round.details,
+            payout: round.payout,
+          }
+        : null,
+  });
+});
+
+/* ── GET /api/rounds/:id/receipt — player-facing fairness receipt ───── */
+router.get("/:id/receipt", async (req: Request, res: Response) => {
+  const userId = requireAuth(req, res);
+  if (!userId) return;
+  const roundId = Number(req.params.id);
+  if (!Number.isInteger(roundId)) {
+    res.status(400).json({ error: "Invalid round ID" });
+    return;
+  }
+  const [round] = await db
+    .select()
+    .from(schema.gameRoundsTable)
+    .where(eq(schema.gameRoundsTable.id, roundId));
+  if (!round) {
+    res.status(404).json({ error: "Round not found" });
+    return;
+  }
+  if (round.userId !== userId) {
+    res.status(403).json({ error: "Forbidden" });
+    return;
+  }
+  if (round.status !== "completed") {
+    res.status(409).json({ error: "Receipt is available after settlement" });
+    return;
+  }
+  res.status(200).json({
+    game: round.gameType,
+    roundId: round.id,
+    timestamp: round.createdAt?.toISOString() ?? null,
+    serverSeedHash: round.serverSeedHash,
+    clientSeed: round.clientSeed,
+    nonce: round.nonce,
+    outcome: round.result,
+    details: round.details,
+    payout: round.payout,
+  });
 });
 
 /* ── POST /api/rounds/:id — Handle interactive game actions ────────── */
