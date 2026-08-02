@@ -97,7 +97,7 @@ jobs:
 
       - name: Run API server tests
         working-directory: artifacts/api-server
-        run: pnpm exec vitest run --no-file-parallelism
+        run: pnpm exec vitest run --no-file-parallelism --poolOptions.forks.reuse=false
 
   build:
     name: Build
