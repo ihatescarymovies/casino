@@ -1,10 +1,76 @@
 import { Router, type Request, type Response } from "express";
 import { getPayramClient } from "../lib/payramClient";
 import { WebhookHandlers } from "../lib/webhookHandlers";
+import { logger } from "../lib/logger";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
 
 const router = Router();
+
+const WEBHOOK_MAX_RETRIES = 3;
+const WEBHOOK_BASE_DELAY_MS = 1000;
+const FALLBACK_POLL_DELAY_MS = 60_000;
+
+const TERMINAL_DB_STATUSES = ["completed", "partial", "cancelled"];
+
+function mapPayramStatus(raw?: string): string {
+  switch (raw?.toUpperCase()) {
+    case "FILLED":
+    case "OVER_FILLED":
+      return "completed";
+    case "PARTIALLY_FILLED":
+      return "partial";
+    case "CANCELLED":
+      return "cancelled";
+    default:
+      return raw?.toLowerCase() ?? "unknown";
+  }
+}
+
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = WEBHOOK_MAX_RETRIES,
+  baseDelayMs = WEBHOOK_BASE_DELAY_MS,
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        await new Promise((r) => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastError;
+}
+
+async function fetchPayramPaymentStatus(referenceId: string): Promise<{
+  status?: string;
+  filled_amount?: string;
+  filled_currency?: string;
+} | null> {
+  const apiUrl = process.env.PAYRAM_API_URL;
+  const apiKey = process.env.PAYRAM_API_KEY;
+  if (!apiUrl || !apiKey) return null;
+
+  try {
+    const res = await fetch(
+      `${apiUrl}/api/v1/payment/reference/${referenceId}`,
+      { headers: { "API-Key": apiKey } },
+    );
+    if (!res.ok) return null;
+    return (await res.json()) as {
+      status?: string;
+      filled_amount?: string;
+      filled_currency?: string;
+    };
+  } catch {
+    return null;
+  }
+}
 
 const DEPOSIT_PACKAGES = [
   {
@@ -117,9 +183,32 @@ router.post("/checkout", async (req: any, res) => {
           ON CONFLICT (reference_id) DO NOTHING`,
     );
 
+    // Schedule a fallback poll 60s after checkout creation. If the webhook
+    // was missed or lost, this ensures payment status eventually converges.
+    const refId = checkout.reference_id;
+    setTimeout(async () => {
+      try {
+        const remote = await fetchPayramPaymentStatus(refId);
+        if (!remote) return;
+        const dbStatus = mapPayramStatus(remote.status);
+        if (!TERMINAL_DB_STATUSES.includes(dbStatus)) return;
+        await db.execute(
+          sql`UPDATE payment_sessions
+              SET status = ${dbStatus}, updated_at = NOW()
+              WHERE reference_id = ${refId} AND status NOT IN ('completed', 'partial', 'cancelled')`,
+        );
+        logger.info(
+          { reference_id: refId, status: remote.status },
+          "Fallback poll updated payment status",
+        );
+      } catch (err) {
+        logger.error({ err, reference_id: refId }, "Fallback poll failed");
+      }
+    }, FALLBACK_POLL_DELAY_MS);
+
     res.json({ url: checkout.url });
   } catch (err: any) {
-    console.error("Checkout error:", err);
+    logger.error({ err }, "Checkout error");
     res.status(500).json({ error: "Failed to create checkout session" });
   }
 });
@@ -166,7 +255,7 @@ router.post("/shareable-link", async (req: any, res) => {
 
     res.json({ url: checkout.url, reference_id: checkout.reference_id });
   } catch (err: any) {
-    console.error("Shareable link error:", err);
+    logger.error({ err }, "Shareable link error");
     res.status(500).json({ error: "Failed to create shareable link" });
   }
 });
@@ -184,13 +273,31 @@ router.get("/status/:referenceId", async (req: any, res) => {
             AND (user_id = ${req.user.id} OR user_id IS NULL)
           LIMIT 1`,
     );
-    const row = rows.rows[0];
+    const row = rows.rows[0] as Record<string, any> | undefined;
     if (!row) {
       res.status(404).json({ error: "Session not found" });
       return;
     }
+
+    if (!TERMINAL_DB_STATUSES.includes(row.status)) {
+      const remote = await fetchPayramPaymentStatus(
+        String(req.params.referenceId),
+      );
+      if (remote?.status) {
+        const dbStatus = mapPayramStatus(remote.status);
+        if (dbStatus !== row.status) {
+          await db.execute(
+            sql`UPDATE payment_sessions SET status = ${dbStatus}, updated_at = NOW()
+                WHERE reference_id = ${req.params.referenceId}`,
+          );
+          row.status = dbStatus;
+        }
+      }
+    }
+
     res.json(row);
   } catch (err: any) {
+    logger.error({ err }, "Status fetch error");
     res.status(500).json({ error: "Failed to fetch status" });
   }
 });
@@ -210,7 +317,7 @@ router.get("/history", async (req: any, res) => {
     );
     res.json(rows.rows);
   } catch (err: any) {
-    console.error("History error:", err);
+    logger.error({ err }, "History error");
     res.status(500).json({ error: "Failed to fetch deposit history" });
   }
 });
@@ -231,19 +338,36 @@ router.get("/history", async (req: any, res) => {
 router.post("/payram-webhook", (req: Request, res: Response) => {
   try {
     if (!WebhookHandlers.verifyWebhookApiKey(req.headers)) {
+      logger.warn(
+        { headers: req.headers },
+        "Webhook rejected: invalid API key",
+      );
       res.status(401).json({ error: "Invalid API key" });
       return;
     }
 
     const payload: Record<string, any> = req.body ?? {};
-    WebhookHandlers.processPayramWebhook(payload)
-      .then(() => res.status(200).json({ received: true }))
+    logger.info(
+      { reference_id: payload.reference_id, status: payload.status },
+      "Webhook received",
+    );
+    withRetry(() => WebhookHandlers.processPayramWebhook(payload))
+      .then(() => {
+        logger.info(
+          { reference_id: payload.reference_id },
+          "Webhook processed",
+        );
+        res.status(200).json({ received: true });
+      })
       .catch((err: any) => {
-        console.error("Webhook error:", err);
+        logger.error(
+          { err, reference_id: payload.reference_id },
+          "Webhook processing failed after retries",
+        );
         res.status(500).json({ error: "Webhook processing error" });
       });
   } catch (err: any) {
-    console.error("Webhook error:", err);
+    logger.error({ err }, "Webhook handler error");
     res.status(500).json({ error: "Webhook processing error" });
   }
 });
@@ -315,7 +439,8 @@ router.post("/withdraw", async (req: any, res) => {
       sql`SELECT id, balance FROM wallets WHERE user_id = ${user.id} LIMIT 1`,
     );
     const wallet = walletRows.rows[0] as
-      { id: number; balance: number } | undefined;
+      | { id: number; balance: number }
+      | undefined;
     if (!wallet || wallet.balance < amountCents) {
       res.status(402).json({ error: "Insufficient balance" });
       return;
@@ -357,7 +482,7 @@ router.post("/withdraw", async (req: any, res) => {
       txHash: payout.txHash ?? null,
     });
   } catch (err: any) {
-    console.error("Withdrawal error:", err);
+    logger.error({ err }, "Withdrawal error");
     res.status(500).json({ error: "Failed to process withdrawal" });
   }
 });
@@ -377,7 +502,7 @@ router.get("/withdrawals", async (req: any, res) => {
     );
     res.json(rows.rows);
   } catch (err: any) {
-    console.error("Withdrawal history error:", err);
+    logger.error({ err }, "Withdrawal history error");
     res.status(500).json({ error: "Failed to fetch withdrawal history" });
   }
 });
@@ -423,7 +548,7 @@ router.get("/withdrawals/:id", async (req: any, res) => {
 
     res.json(row);
   } catch (err: any) {
-    console.error("Withdrawal status error:", err);
+    logger.error({ err }, "Withdrawal status error");
     res.status(500).json({ error: "Failed to fetch withdrawal status" });
   }
 });
