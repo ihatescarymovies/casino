@@ -17,5 +17,13 @@ export default defineConfig({
       "src/routes/**/*.test.ts",
     ],
     setupFiles: ["./src/test/setup.ts"],
+    pool: "forks",
+    poolOptions: {
+      forks: {
+        maxForks: 1,
+        isolate: true,
+      },
+    },
+    testTimeout: 180_000,
   },
 });

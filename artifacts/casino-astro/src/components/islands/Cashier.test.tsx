@@ -180,7 +180,7 @@ describe("Cashier", () => {
 
     // Complete the flow
     await user.click(screen.getByLabelText("Deposit via Bank Transfer"));
-    await user.click(screen.getByText("$50"));
+    await user.click(screen.getByText("$100"));
     await user.click(screen.getByText("Continue"));
     await user.click(screen.getByRole("button", { name: "Confirm Deposit" }));
 
