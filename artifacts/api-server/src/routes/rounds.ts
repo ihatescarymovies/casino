@@ -375,12 +375,6 @@ router.post(
       res.status(403).json({ error: "Forbidden" });
       return;
     }
-    if (round.status === "pending" || round.result === "pending") {
-      res
-        .status(409)
-        .json({ error: "Pending rounds cannot be verified or reveal a seed" });
-      return;
-    }
 
     const { serverSeed } = req.body;
     if (
