@@ -46,12 +46,13 @@ const METHODS: {
   },
 ];
 
-const PRESET_AMOUNTS = [1000, 2500, 10000, 25000, 50000, 100000];
+const PRESET_AMOUNTS = [1000, 2500, 5000, 10000, 25000, 50000, 100000];
 
 /** Maps preset amount (in cents) to backend deposit-package `priceId`. Must match DEPOSIT_PACKAGES in api-server/src/routes/payments.ts. */
 const PACKAGE_FOR_CENTS: Record<number, string> = {
   1000: "min-deposit",
   2500: "starter",
+  5000: "standard",
   10000: "pro",
   25000: "elite",
   50000: "vip",
