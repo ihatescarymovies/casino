@@ -38,6 +38,7 @@ export interface GameConfig {
   maxBet: number;
   rtp: number;
   rules: Record<string, unknown>;
+  instant?: boolean;
 }
 
 export interface GameRoundData {

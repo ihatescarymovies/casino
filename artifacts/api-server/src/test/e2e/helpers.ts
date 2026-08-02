@@ -415,14 +415,21 @@ export function setupMockDb() {
           where: vi.fn((condition: any) => {
             const tableName = table?.name ?? "";
             const lastItems = lastQueryResults[tableName];
+            const updatedItems: any[] = [];
             const updateItems = (items: any[]) => {
               if (lastItems && lastItems.length > 0) {
                 const lastIds = new Set(lastItems.map((i: any) => i.id));
                 for (const item of items) {
-                  if (lastIds.has(item.id)) Object.assign(item, updates);
+                  if (lastIds.has(item.id)) {
+                    Object.assign(item, updates);
+                    updatedItems.push(item);
+                  }
                 }
               } else {
-                for (const item of items) Object.assign(item, updates);
+                for (const item of items) {
+                  Object.assign(item, updates);
+                  updatedItems.push(item);
+                }
               }
             };
             if (
@@ -443,7 +450,7 @@ export function setupMockDb() {
               const target = dbState.hashChains.find((c) => c.isActive);
               if (target) target.isActive = false;
             }
-            return Promise.resolve();
+            return { returning: vi.fn(() => Promise.resolve(updatedItems)) };
           }),
         })),
       })),

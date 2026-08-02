@@ -137,6 +137,7 @@ export class RouletteEngine extends BaseGameEngine {
     minBet: 1,
     maxBet: 100000,
     rtp: 0.973,
+    instant: true,
     rules: {
       wheel: "european",
       numbers: 37,

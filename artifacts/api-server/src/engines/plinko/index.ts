@@ -107,6 +107,7 @@ export class PlinkoEngine extends BaseGameEngine {
     minBet: 1,
     maxBet: 100000,
     rtp: 0.96,
+    instant: true,
     rules: {
       rows: [8, 12, 16],
       risks: ["low", "medium", "high"],
