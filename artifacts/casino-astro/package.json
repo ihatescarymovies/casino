@@ -14,7 +14,7 @@
     "start": "node dist/server/entry.mjs"
   },
   "dependencies": {
-    "@astrojs/node": "^11.0.2",
+    "@astrojs/node": "^10.1.4",
     "@astrojs/react": "catalog:",
     "@base-ui/react": "^1.6.0",
     "@fontsource-variable/geist": "^5.2.9",
