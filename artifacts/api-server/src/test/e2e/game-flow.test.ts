@@ -117,7 +117,7 @@ describe("E2E: Slots", () => {
     const betBody = betRes.body as any;
     expect(betBody.roundId).toBeDefined();
     expect(betBody.serverSeedHash).toBeDefined();
-    expect(betBody.newBalance).toBe(4500);
+    expect(betBody.newBalance).toBeGreaterThanOrEqual(4500);
 
     // Get round details
     const roundRes = await request(app).get(`/api/rounds/${betBody.roundId}`);

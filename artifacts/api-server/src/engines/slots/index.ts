@@ -458,6 +458,7 @@ export class SlotsEngine extends BaseGameEngine {
     minBet: 1,
     maxBet: 100000,
     rtp: 0.96,
+    instant: true,
     rules: {
       reels: 5,
       rows: 3,
