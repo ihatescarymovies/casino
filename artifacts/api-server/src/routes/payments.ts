@@ -248,4 +248,184 @@ router.post("/payram-webhook", (req: Request, res: Response) => {
   }
 });
 
+const WITHDRAWAL_MIN_CENTS = 1000;
+const WITHDRAWAL_MAX_CENTS = 1_000_000;
+
+const SUPPORTED_PAYOUT_CHAINS: Record<string, string[]> = {
+  ETH: ["USDC", "USDT"],
+  BASE: ["USDC"],
+  TRX: ["USDT"],
+  BTC: ["USDC", "USDT"],
+};
+
+function isValidAddress(addr: string): boolean {
+  if (!addr || addr.length < 20 || addr.length > 64) return false;
+  if (/^0x[0-9a-fA-F]{40}$/.test(addr)) return true;
+  if (/^[13T][0-9a-zA-Z]{25,47}$/.test(addr)) return true;
+  return false;
+}
+
+router.post("/withdraw", async (req: any, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { blockchainCode, currencyCode, amountUsd, toAddress } =
+      req.body ?? {};
+    const chain = String(blockchainCode ?? "").toUpperCase();
+    const currency = String(currencyCode ?? "").toUpperCase();
+    const amountCents = Math.round(Number(amountUsd));
+
+    if (!chain || !currency || !amountUsd || !toAddress) {
+      res.status(400).json({
+        error:
+          "blockchainCode, currencyCode, amountUsd, and toAddress are required",
+      });
+      return;
+    }
+    if (
+      !SUPPORTED_PAYOUT_CHAINS[chain] ||
+      !SUPPORTED_PAYOUT_CHAINS[chain].includes(currency)
+    ) {
+      res
+        .status(400)
+        .json({ error: `Unsupported chain/currency: ${chain}/${currency}` });
+      return;
+    }
+    if (
+      !Number.isFinite(amountCents) ||
+      amountCents < WITHDRAWAL_MIN_CENTS ||
+      amountCents > WITHDRAWAL_MAX_CENTS
+    ) {
+      res.status(400).json({
+        error: `amountUsd must be between $${WITHDRAWAL_MIN_CENTS / 100} and $${WITHDRAWAL_MAX_CENTS / 100}`,
+      });
+      return;
+    }
+    if (!isValidAddress(String(toAddress))) {
+      res.status(400).json({ error: "Invalid destination wallet address" });
+      return;
+    }
+
+    const user = req.user;
+
+    const walletRows = await db.execute(
+      sql`SELECT id, balance FROM wallets WHERE user_id = ${user.id} LIMIT 1`,
+    );
+    const wallet = walletRows.rows[0] as
+      { id: number; balance: number } | undefined;
+    if (!wallet || wallet.balance < amountCents) {
+      res.status(402).json({ error: "Insufficient balance" });
+      return;
+    }
+
+    const tokenAmount = String(amountCents / 100);
+
+    const payram = getPayramClient();
+    const payout = await payram.payouts.createPayout({
+      email: user.email ?? `user-${user.id}@casino.local`,
+      blockchainCode: chain as any,
+      currencyCode: currency as any,
+      amount: tokenAmount,
+      toAddress: String(toAddress),
+      customerID: String(user.id),
+    });
+
+    await db.execute(
+      sql`INSERT INTO withdrawal_requests (user_id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, created_at, updated_at)
+          VALUES (${user.id}, ${payout.id ?? null}, ${chain}, ${currency}, ${amountCents}, ${String(toAddress)}, ${payout.status ?? "pending"}, ${payout.txHash ?? null}, ${payout.fee ?? null}, NOW(), NOW())`,
+    );
+
+    const newBalance = wallet.balance - amountCents;
+    await db.execute(
+      sql`UPDATE wallets SET balance = ${newBalance}, updated_at = NOW() WHERE id = ${wallet.id}`,
+    );
+    await db.execute(
+      sql`INSERT INTO transactions (wallet_id, user_id, type, amount, balance_before, balance_after, status, reference_id, description, created_at)
+          VALUES (${wallet.id}, ${user.id}, 'withdrawal', ${-amountCents}, ${wallet.balance}, ${newBalance}, 'completed', ${String(payout.id ?? "")}, 'Crypto withdrawal via PayRam', NOW())`,
+    );
+
+    res.json({
+      id: payout.id,
+      status: payout.status ?? "pending",
+      amountUsd: amountCents,
+      blockchainCode: chain,
+      currencyCode: currency,
+      toAddress,
+      txHash: payout.txHash ?? null,
+    });
+  } catch (err: any) {
+    console.error("Withdrawal error:", err);
+    res.status(500).json({ error: "Failed to process withdrawal" });
+  }
+});
+
+router.get("/withdrawals", async (req: any, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const rows = await db.execute(
+      sql`SELECT id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, failure_reason, created_at, updated_at
+          FROM withdrawal_requests
+          WHERE user_id = ${req.user.id}
+          ORDER BY created_at DESC
+          LIMIT 20`,
+    );
+    res.json(rows.rows);
+  } catch (err: any) {
+    console.error("Withdrawal history error:", err);
+    res.status(500).json({ error: "Failed to fetch withdrawal history" });
+  }
+});
+
+router.get("/withdrawals/:id", async (req: any, res) => {
+  try {
+    if (!req.isAuthenticated()) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+    const rows = await db.execute(
+      sql`SELECT id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, failure_reason, created_at, updated_at
+          FROM withdrawal_requests
+          WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+          LIMIT 1`,
+    );
+    const row = rows.rows[0] as Record<string, any> | undefined;
+    if (!row) {
+      res.status(404).json({ error: "Withdrawal not found" });
+      return;
+    }
+
+    if (
+      row.payout_id &&
+      !["completed", "failed", "rejected"].includes(row.status)
+    ) {
+      try {
+        const payram = getPayramClient();
+        const payout = await payram.payouts.getPayoutById(
+          Number(row.payout_id),
+        );
+        if (payout.status && payout.status !== row.status) {
+          await db.execute(
+            sql`UPDATE withdrawal_requests SET status = ${payout.status}, tx_hash = ${payout.txHash ?? null}, updated_at = NOW() WHERE id = ${row.id}`,
+          );
+          row.status = payout.status;
+          row.tx_hash = payout.txHash ?? null;
+        }
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    res.json(row);
+  } catch (err: any) {
+    console.error("Withdrawal status error:", err);
+    res.status(500).json({ error: "Failed to fetch withdrawal status" });
+  }
+});
+
 export default router;
