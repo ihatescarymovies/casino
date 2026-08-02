@@ -35,6 +35,19 @@ function createMockEngine(gameType: string): GameEngine {
         gameDetails: {},
       };
     },
+    async resolveRound() {
+      return {
+        roundId: 1,
+        gameType,
+        betAmount: 500,
+        clientSeed: "test-seed",
+        serverSeedHash: "abc123",
+        nonce: 0,
+        state: "completed" as any,
+        result: "win" as any,
+        payout: 1000,
+      };
+    },
   };
 }
 

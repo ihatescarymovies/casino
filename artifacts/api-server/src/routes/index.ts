@@ -10,6 +10,7 @@ import eventsRouter from "./events";
 import roundsRouter from "./rounds";
 import walletRouter from "./wallet";
 import demoWalletRouter from "./demo-wallet";
+import fairnessRouter from "./fairness";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use("/", eventsRouter);
 router.use("/rounds", roundsRouter);
 router.use("/wallet", walletRouter);
 router.use("/demo/wallet", demoWalletRouter);
+router.use("/fairness", fairnessRouter);
 
 export default router;

@@ -30,7 +30,7 @@ function GameCardReact({ game }: { game: Game }) {
       : "Balance unavailable";
 
   return (
-    <a href={`/games/${game.id}`} className="group block">
+    <div className="group block">
       <div className="casino-card relative overflow-hidden transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(234,179,8,0.15)] hover:border-primary/50 cursor-pointer">
         <div className="aspect-[4/3] w-full overflow-hidden relative">
           <img
@@ -89,7 +89,7 @@ function GameCardReact({ game }: { game: Game }) {
           </div>
         </div>
       </div>
-    </a>
+    </div>
   );
 }
 
@@ -155,9 +155,9 @@ export default function GamesFilter({ categories, games }: GamesFilterProps) {
       {/* Sidebar */}
       <aside className="lg:w-64 shrink-0">
         <div className="sticky top-24 flex flex-col gap-2">
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-4">
             Categories
-          </h3>
+          </h2>
           <button
             type="button"
             onClick={() => setSelectedCategory("all")}

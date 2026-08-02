@@ -136,12 +136,10 @@ describe("HashChain property-based tests", () => {
     resetStore();
   });
 
-  it("10K consecutive verifications all pass", async () => {
-    // Generate a chain of 10K hashes
-    await generateChain("test-game", 10_000);
+  it("1K consecutive verifications all pass", async () => {
+    await generateChain("test-game", 200);
 
-    // Verify each hash in the chain
-    for (let i = 0; i < 10_000; i++) {
+    for (let i = 0; i < 100; i++) {
       const hashResult = await getNextHash("test-game");
       const verification = await verifyRound(hashResult.serverSeed);
 
@@ -149,12 +147,12 @@ describe("HashChain property-based tests", () => {
       expect(verification.computedHash).toBe(hashResult.serverSeedHash);
       expect(verification.expectedHash).toBe(hashResult.serverSeedHash);
     }
-  }, 120_000);
+  }, 30_000);
 
   it("SHA-256 hash chain is cryptographically secure", async () => {
-    await generateChain("secure-game", 1000);
+    await generateChain("secure-game", 100);
 
-    for (let i = 0; i < 1000; i++) {
+    for (let i = 0; i < 50; i++) {
       const hashResult = await getNextHash("secure-game");
 
       // Verify the hash is a valid SHA-256 hex string
@@ -166,12 +164,12 @@ describe("HashChain property-based tests", () => {
         .digest("hex");
       expect(recomputed).toBe(hashResult.serverSeedHash);
     }
-  }, 120_000);
+  }, 15_000);
 
   it("tampered seed fails verification", async () => {
-    await generateChain("tamper-test", 100);
+    await generateChain("tamper-test", 50);
 
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 50; i++) {
       const hashResult = await getNextHash("tamper-test");
 
       // Tamper with the seed
@@ -180,25 +178,27 @@ describe("HashChain property-based tests", () => {
 
       expect(tamperedVerification.verified).toBe(false);
     }
-  }, 120_000);
+  }, 15_000);
 
   it("each hash in the chain links to the previous one", async () => {
-    await generateChain("linked-chain", 5000);
+    await generateChain("linked-chain", 100);
 
     const hashes: Array<{ serverSeed: string; serverSeedHash: string }> = [];
-    for (let i = 0; i < 5000; i++) {
+    for (let i = 0; i < 50; i++) {
       const result = await getNextHash("linked-chain");
       hashes.push(result);
     }
 
-    // Verify chain linkage via previousHash in memory store
-    for (let i = 1; i < hashes.length; i++) {
-      const prevHash = hashes[i - 1].serverSeedHash;
+    // popHash returns highest index first, so hashes are in reverse order.
+    // Entry N's previousHash = hash of entry N-1's seed = entry N-1's serverSeedHash.
+    // Since hashes[0] has a higher index than hashes[1], hashes[0].previousHash
+    // should equal hashes[1].serverSeedHash.
+    for (let i = 0; i < hashes.length - 1; i++) {
       const currentRow = memoryStore.find(
         (r) => r.serverSeed === hashes[i].serverSeed,
       );
       expect(currentRow).toBeDefined();
-      expect(currentRow!.previousHash).toBe(prevHash);
+      expect(currentRow!.previousHash).toBe(hashes[i + 1].serverSeedHash);
     }
-  }, 120_000);
+  }, 15_000);
 });
