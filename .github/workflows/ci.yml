@@ -81,6 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: "--max-old-space-size=16384"
+      CI_PROPERTY_ITERATIONS: "1000"
     steps:
       - uses: actions/checkout@v4
 

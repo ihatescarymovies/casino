@@ -26,7 +26,8 @@ describe("CrashEngine property-based tests", () => {
   const engine = new CrashEngine();
 
   it("crash point is always >= 1.00x over 100K iterations", async () => {
-    for (let nonce = 0; nonce < 100_000; nonce++) {
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 100_000);
+    for (let nonce = 0; nonce < iterations; nonce++) {
       const round = createRound({ nonce });
       const result = await (engine as any).executeGame("user1", round);
       expect(result.gameDetails.crashPoint).toBeGreaterThanOrEqual(1.0);
@@ -35,7 +36,7 @@ describe("CrashEngine property-based tests", () => {
 
   it("distribution matches expected formula: most rounds crash early", async () => {
     const crashPoints: number[] = [];
-    const iterations = 100_000;
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 100_000);
 
     for (let nonce = 0; nonce < iterations; nonce++) {
       const round = createRound({ nonce });

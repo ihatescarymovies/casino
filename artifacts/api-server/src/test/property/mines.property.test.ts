@@ -26,7 +26,7 @@ describe("MinesEngine property-based tests", () => {
   const engine = new MinesEngine();
 
   it("multiplier progression matches formula over 100K mine placements", async () => {
-    const iterations = 100_000;
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 100_000);
 
     for (let nonce = 0; nonce < iterations; nonce++) {
       const round = createRound({

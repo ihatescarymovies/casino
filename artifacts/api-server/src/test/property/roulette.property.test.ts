@@ -31,7 +31,7 @@ describe("RouletteEngine property-based tests", () => {
 
   it("house edge is within ±0.5% of 2.7% (RTP ~97.3%) over 100K iterations", async () => {
     const betAmount = 10;
-    const iterations = 100_000;
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 100_000);
     let totalBet = 0;
     let totalPayout = 0;
 
@@ -94,7 +94,7 @@ describe("RouletteEngine property-based tests", () => {
 
   it("straight bet RTP converges to ~97.3% over many spins", async () => {
     const betAmount = 10;
-    const iterations = 50_000;
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 50_000);
     let totalBet = 0;
     let totalPayout = 0;
 

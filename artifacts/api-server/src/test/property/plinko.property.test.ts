@@ -32,7 +32,7 @@ describe("PlinkoEngine property-based tests", () => {
 
   it("slot distribution matches binomial over 100K balls", async () => {
     const rows = 16;
-    const iterations = 100_000;
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 100_000);
     const slotCounts = new Map<number, number>();
 
     for (let nonce = 0; nonce < iterations; nonce++) {
@@ -93,7 +93,7 @@ describe("PlinkoEngine property-based tests", () => {
 
   it("RTP converges to ~96% over many balls", async () => {
     const betAmount = 100;
-    const iterations = 100_000;
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 100_000);
     let totalBet = 0;
     let totalPayout = 0;
 

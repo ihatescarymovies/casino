@@ -27,7 +27,7 @@ describe("SlotsEngine property-based tests", () => {
 
   it("RTP is within ±5% of target over 100K iterations", async () => {
     const betAmount = 100;
-    const iterations = 100_000;
+    const iterations = Number(process.env.CI_PROPERTY_ITERATIONS ?? 100_000);
     let totalBet = 0;
     let totalPayout = 0;
 

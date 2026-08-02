@@ -138,10 +138,11 @@ describe("HashChain property-based tests", () => {
 
   it("10K consecutive verifications all pass", async () => {
     // Generate a chain of 10K hashes
-    await generateChain("test-game", 10_000);
+    const chainLen = Number(process.env.CI_PROPERTY_ITERATIONS ?? 10_000);
+    await generateChain("test-game", chainLen);
 
     // Verify each hash in the chain
-    for (let i = 0; i < 10_000; i++) {
+    for (let i = 0; i < chainLen; i++) {
       const hashResult = await getNextHash("test-game");
       const verification = await verifyRound(hashResult.serverSeed);
 
@@ -183,10 +184,11 @@ describe("HashChain property-based tests", () => {
   }, 120_000);
 
   it("each hash in the chain links to the previous one", async () => {
-    await generateChain("linked-chain", 5000);
+    const chainLen = Number(process.env.CI_PROPERTY_ITERATIONS ?? 5000);
+    await generateChain("linked-chain", chainLen);
 
     const hashes: Array<{ serverSeed: string; serverSeedHash: string }> = [];
-    for (let i = 0; i < 5000; i++) {
+    for (let i = 0; i < chainLen; i++) {
       const result = await getNextHash("linked-chain");
       hashes.push(result);
     }
