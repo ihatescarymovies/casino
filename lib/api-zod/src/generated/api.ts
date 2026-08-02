@@ -351,8 +351,9 @@ export const VerifyRoundHeader = zod.object({
 });
 
 export const VerifyRoundBody = zod.object({
-  roundId: zod.number(),
-  serverSeed: zod.string(),
+  // Kept optional for backwards-compatible clients; the URL is canonical.
+  roundId: zod.number().optional(),
+  serverSeed: zod.string().min(1).max(128),
 });
 
 export const VerifyRoundResponse = zod.object({

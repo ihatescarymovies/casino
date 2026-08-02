@@ -7,6 +7,6 @@
  */
 
 export interface VerificationRequest {
-  roundId: number;
+  roundId?: number;
   serverSeed: string;
 }
