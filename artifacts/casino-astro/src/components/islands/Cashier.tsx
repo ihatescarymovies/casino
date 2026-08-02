@@ -46,7 +46,18 @@ const METHODS: {
   },
 ];
 
-const PRESET_AMOUNTS = [2500, 5000, 10000, 25000, 50000, 100000];
+const PRESET_AMOUNTS = [1000, 2500, 5000, 10000, 25000, 50000, 100000];
+
+/** Maps preset amount (in cents) to backend deposit-package `priceId`. Must match DEPOSIT_PACKAGES in api-server/src/routes/payments.ts. */
+const PACKAGE_FOR_CENTS: Record<number, string> = {
+  1000: "min-deposit",
+  2500: "starter",
+  5000: "standard",
+  10000: "pro",
+  25000: "elite",
+  50000: "vip",
+  100000: "vip",
+};
 
 function formatUSD(cents: number): string {
   return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
@@ -96,12 +107,18 @@ export default function Cashier() {
   }
 
   async function handleDeposit() {
-    if (!selectedAmount || selectedAmount < 500) {
-      setError("Minimum deposit is $5.00");
+    if (!selectedAmount || selectedAmount < 1000) {
+      setError("Minimum deposit is $10.00");
       return;
     }
     if (selectedAmount > 1000000) {
       setError("Maximum single deposit is $10,000.00");
+      return;
+    }
+
+    const priceId = PACKAGE_FOR_CENTS[selectedAmount];
+    if (!priceId) {
+      setError("Please choose one of the listed deposit amounts.");
       return;
     }
 
@@ -122,10 +139,7 @@ export default function Cashier() {
           ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
         },
         credentials: "include",
-        body: JSON.stringify({
-          amount: selectedAmount,
-          method,
-        }),
+        body: JSON.stringify({ priceId }),
       });
       const data = await res.json();
 
@@ -134,7 +148,6 @@ export default function Cashier() {
         return;
       }
 
-      // If the API doesn't redirect (e.g. mock/stub), show success
       setSuccess(true);
     } catch {
       setError("Network error. Please try again.");
@@ -317,7 +330,7 @@ export default function Cashier() {
               <input
                 id="custom-amount"
                 type="number"
-                min="5"
+                min="10"
                 max="10000"
                 step="1"
                 placeholder="0.00"
@@ -341,9 +354,9 @@ export default function Cashier() {
             <button
               type="button"
               className="btn btn-primary flex items-center gap-2"
-              disabled={!selectedAmount || selectedAmount < 500}
+              disabled={!selectedAmount || selectedAmount < 1000}
               onClick={() => {
-                if (selectedAmount && selectedAmount >= 500) {
+                if (selectedAmount && selectedAmount >= 1000) {
                   setError(null);
                   setStep("confirm");
                 }
