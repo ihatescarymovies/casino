@@ -23,9 +23,11 @@ type CasinoStats = {
   currentJackpot: number;
 };
 
-const featuredGames = await apiFetch<Game[]>("/api/games/featured");
-const winners = await apiFetch<Winner[]>("/api/winners?limit=10");
-const stats = await apiFetch<CasinoStats>("/api/stats");
+const [featuredGames, winners, stats] = await Promise.all([
+  apiFetch<Game[]>("/api/games/featured"),
+  apiFetch<Winner[]>("/api/winners?limit=10"),
+  apiFetch<CasinoStats>("/api/stats"),
+]);
 ---
 
 <BaseLayout>
