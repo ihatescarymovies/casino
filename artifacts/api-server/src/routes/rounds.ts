@@ -192,7 +192,7 @@ router.get("/:id", async (req: Request, res: Response) => {
 });
 
 /* ── GET /api/rounds/:id/receipt — player-facing fairness receipt ───── */
-router.get("/:id/receipt", async (req: Request, res: Response) => {
+router.get("/:id/receipt", rateLimitMiddleware, async (req: Request, res: Response) => {
   const userId = requireAuth(req, res);
   if (!userId) return;
   const roundId = Number(req.params.id);

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { verifyReceipt } from "../lib/fairness";
+import { rateLimitMiddleware } from "../middleware/rate-limit";
 
 const router = Router();
 const receiptSchema = z.object({
@@ -14,7 +15,7 @@ const receiptSchema = z.object({
 });
 
 /** Public verifier: it only checks the commitment, never requires login. */
-router.post("/verify", (req, res) => {
+router.post("/verify", rateLimitMiddleware, (req, res) => {
   const parsed = receiptSchema.safeParse(req.body?.receipt);
   const serverSeed = req.body?.serverSeed;
   if (
