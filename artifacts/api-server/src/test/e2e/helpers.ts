@@ -234,6 +234,9 @@ export function resetDbState() {
     gameRound: 1,
     hashChain: 1,
   };
+  // Clear stale query results so updates apply to freshly-inserted items
+  // (lastQueryResults holds array refs from before resetDbState replaced them)
+  for (const key in lastQueryResults) delete lastQueryResults[key];
 }
 
 export function getDbState(): MockDbState {
