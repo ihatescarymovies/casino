@@ -67,6 +67,25 @@ catalog:
   vite: ^7.3.5
   wouter: ^3.3.5
   zod: ^3.25.76
+  # ---------------------------------------------------------------------------
+  # Expo SDK 57 + React Native 0.86 (mobile app)
+  # ---------------------------------------------------------------------------
+  expo: ^57.0.9
+  expo-constants: ^57.0.8
+  expo-font: ^57.0.1
+  expo-haptics: ^57.0.1
+  expo-linking: ^57.0.4
+  expo-router: ^5.0.7
+  expo-secure-store: ^57.0.1
+  expo-splash-screen: ^57.0.5
+  expo-status-bar: ^57.0.1
+  "@expo/metro-config": ^57.0.7
+  "@expo/vector-icons": ^15.1.1
+  react-native: ^0.86.2
+  react-native-safe-area-context: ^5.8.0
+  react-native-screens: ^4.26.2
+  react-native-web: ^0.21.2
+  "@react-navigation/native": ^7.3.14
 
 autoInstallPeers: false
 
