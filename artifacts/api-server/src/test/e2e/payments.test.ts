@@ -47,6 +47,15 @@ vi.mock("../../lib/webhookHandlers", () => ({
   },
 }));
 
+/* ── Mock rateLimitMiddleware (pass-through) ──────────────────────────── */
+vi.mock("../../middleware/rateLimitMiddleware", () => ({
+  checkoutLimiter: (_req: any, _res: any, next: any) => next(),
+  shareableLinkLimiter: (_req: any, _res: any, next: any) => next(),
+  withdrawLimiter: (_req: any, _res: any, next: any) => next(),
+  webhookLimiter: (_req: any, _res: any, next: any) => next(),
+  apiLimiter: (_req: any, _res: any, next: any) => next(),
+}));
+
 /* ── Imports after mocks ───────────────────────────────────────────── */
 
 import paymentsRouter from "../../routes/payments";
