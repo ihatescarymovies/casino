@@ -1,8 +1,8 @@
 {
   "ci": {
     "collect": {
-      "startServerCommand": "cd artifacts/casino-astro && pnpm run preview",
-      "startServerReadyPattern": "Local",
+      "startServerCommand": "cd artifacts/casino-astro && PORT=4321 HOST=0.0.0.0 pnpm run start",
+      "startServerReadyPattern": "Server listening",
       "url": [
         "http://localhost:4321/",
         "http://localhost:4321/games",
