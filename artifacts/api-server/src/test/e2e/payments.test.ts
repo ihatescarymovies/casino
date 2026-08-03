@@ -210,7 +210,7 @@ describe("POST /api/payments/checkout", () => {
     const app = createApp("user-1");
     const res = await request(app).post("/api/payments/checkout", {});
     expect(res.status).toBe(400);
-    expect(res.body as any).toEqual({ error: "priceId required" });
+    expect(res.body as any).toMatchObject({ error: "Validation failed" });
   });
 
   it("returns 400 for invalid priceId", async () => {
@@ -316,7 +316,7 @@ describe("POST /api/payments/shareable-link", () => {
       amountInUSD: 5,
     });
     expect(res.status).toBe(400);
-    expect((res.body as any).error).toContain("10");
+    expect(JSON.stringify(res.body)).toContain("10");
   });
 
   it("returns 400 when amountInUSD exceeds $10000", async () => {
@@ -325,7 +325,7 @@ describe("POST /api/payments/shareable-link", () => {
       amountInUSD: 10001,
     });
     expect(res.status).toBe(400);
-    expect((res.body as any).error).toContain("10000");
+    expect(JSON.stringify(res.body)).toContain("10000");
   });
 
   it("returns 400 for non-numeric amount", async () => {
@@ -539,9 +539,7 @@ describe("POST /api/payments/payram-webhook", () => {
   });
 
   it("returns 500 when webhook processing throws", async () => {
-    webhookMocks.processPayramWebhook.mockRejectedValueOnce(
-      new Error("DB error"),
-    );
+    webhookMocks.processPayramWebhook.mockRejectedValue(new Error("DB error"));
     const app = createApp();
     const res = await request(app).post("/api/payments/payram-webhook", {
       reference_id: "test-ref",

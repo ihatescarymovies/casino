@@ -16,6 +16,7 @@ export const checkoutLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many checkout attempts. Please try again later." },
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 export const shareableLinkLimiter = rateLimit({
@@ -26,6 +27,7 @@ export const shareableLinkLimiter = rateLimit({
   message: {
     error: "Too many shareable link requests. Please try again later.",
   },
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 export const withdrawLimiter = rateLimit({
@@ -34,6 +36,7 @@ export const withdrawLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many withdrawal attempts. Please try again later." },
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 export const webhookLimiter = rateLimit({
@@ -42,6 +45,7 @@ export const webhookLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many webhook requests." },
+  skip: () => process.env.NODE_ENV === "test",
 });
 
 /** General API rate limit for all other routes. */
@@ -51,4 +55,5 @@ export const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Too many requests. Please slow down." },
+  skip: () => process.env.NODE_ENV === "test",
 });

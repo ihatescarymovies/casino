@@ -390,7 +390,7 @@ router.get("/history", async (req: any, res) => {
 router.post(
   "/payram-webhook",
   webhookLimiter,
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     try {
       if (!WebhookHandlers.verifyWebhookApiKey(req.headers)) {
         logger.warn(
@@ -406,21 +406,9 @@ router.post(
         { reference_id: payload.reference_id, status: payload.status },
         "Webhook received",
       );
-      withRetry(() => WebhookHandlers.processPayramWebhook(payload))
-        .then(() => {
-          logger.info(
-            { reference_id: payload.reference_id },
-            "Webhook processed",
-          );
-          res.status(200).json({ received: true });
-        })
-        .catch((err: any) => {
-          logger.error(
-            { err, reference_id: payload.reference_id },
-            "Webhook processing failed after retries",
-          );
-          res.status(500).json({ error: "Webhook processing error" });
-        });
+      await withRetry(() => WebhookHandlers.processPayramWebhook(payload));
+      logger.info({ reference_id: payload.reference_id }, "Webhook processed");
+      res.status(200).json({ received: true });
     } catch (err: any) {
       logger.error({ err }, "Webhook handler error");
       res.status(500).json({ error: "Webhook processing error" });

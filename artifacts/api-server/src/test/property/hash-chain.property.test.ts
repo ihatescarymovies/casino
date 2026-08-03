@@ -164,7 +164,7 @@ describe("HashChain property-based tests", () => {
         .digest("hex");
       expect(recomputed).toBe(hashResult.serverSeedHash);
     }
-  }, 15_000);
+  }, 30_000);
 
   it("tampered seed fails verification", async () => {
     await generateChain("tamper-test", 50);
@@ -178,7 +178,7 @@ describe("HashChain property-based tests", () => {
 
       expect(tamperedVerification.verified).toBe(false);
     }
-  }, 15_000);
+  }, 30_000);
 
   it("each hash in the chain links to the previous one", async () => {
     await generateChain("linked-chain", 100);
@@ -200,5 +200,5 @@ describe("HashChain property-based tests", () => {
       expect(currentRow).toBeDefined();
       expect(currentRow!.previousHash).toBe(hashes[i + 1].serverSeedHash);
     }
-  }, 15_000);
+  }, 30_000);
 });

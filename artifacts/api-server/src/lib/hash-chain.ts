@@ -104,6 +104,9 @@ export async function generateChain(
   let prevHash = previousHash;
 
   for (let i = 0; i < count; i++) {
+    if (i > 0 && i % 50_000 === 0) {
+      await new Promise((r) => setTimeout(r, 0));
+    }
     const serverSeed = generateSeed(gameType, chainId, i);
     const serverSeedHash = sha256(serverSeed);
 
