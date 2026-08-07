@@ -50,6 +50,7 @@ const PROTECTED_PATHS = ["/dashboard", "/cashier", "/profile", "/transactions"];
 async function getAuthUser(request: Request): Promise<AuthUser | null> {
   try {
     const response = await fetch(`${API_BASE_URL}/api/auth/user`, {
+      signal: AbortSignal.timeout(3000),
       headers: {
         cookie: request.headers.get("cookie") ?? "",
         accept: "application/json",
@@ -209,7 +210,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  const user = await getAuthUser(context.request);
+  const user = isStaticAsset ? null : await getAuthUser(context.request);
   context.locals.user = user;
 
   const isProtected = PROTECTED_PATHS.some(
@@ -245,10 +246,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
       const proxyRes = await fetch(proxyUrl, {
         method,
         headers: proxyHeaders,
-        body: method !== "GET" && method !== "HEAD"
-          ? await context.request.text()
-          : undefined,
+        body:
+          method !== "GET" && method !== "HEAD"
+            ? await context.request.text()
+            : undefined,
         redirect: "manual",
+        signal: AbortSignal.timeout(3000),
       });
       const resHeaders = new Headers(proxyRes.headers);
       for (const [key, value] of Object.entries(SECURITY_HEADERS)) {

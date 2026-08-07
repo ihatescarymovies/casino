@@ -201,7 +201,7 @@ const initials = user
   </div>
 </div>
 
-<script>
+<script is:inline>
   const btn = document.getElementById("mobile-menu-btn");
   const menu = document.getElementById("mobile-menu");
   const backdrop = document.getElementById("mobile-menu-backdrop");
@@ -209,26 +209,26 @@ const initials = user
   const closeBtn = document.getElementById("mobile-menu-close");
 
   function openMenu() {
-    menu!.classList.remove("pointer-events-none");
-    menu!.classList.add("pointer-events-auto");
-    backdrop!.classList.remove("opacity-0");
-    backdrop!.classList.add("opacity-100");
-    panel!.classList.remove("translate-x-full");
-    panel!.classList.add("translate-x-0");
-    btn!.setAttribute("aria-expanded", "true");
+    menu.classList.remove("pointer-events-none");
+    menu.classList.add("pointer-events-auto");
+    backdrop.classList.remove("opacity-0");
+    backdrop.classList.add("opacity-100");
+    panel.classList.remove("translate-x-full");
+    panel.classList.add("translate-x-0");
+    btn.setAttribute("aria-expanded", "true");
     document.body.style.overflow = "hidden";
   }
 
   function closeMenu() {
-    backdrop!.classList.remove("opacity-100");
-    backdrop!.classList.add("opacity-0");
-    panel!.classList.remove("translate-x-0");
-    panel!.classList.add("translate-x-full");
-    btn!.setAttribute("aria-expanded", "false");
+    backdrop.classList.remove("opacity-100");
+    backdrop.classList.add("opacity-0");
+    panel.classList.remove("translate-x-0");
+    panel.classList.add("translate-x-full");
+    btn.setAttribute("aria-expanded", "false");
     document.body.style.overflow = "";
     setTimeout(() => {
-      menu!.classList.remove("pointer-events-auto");
-      menu!.classList.add("pointer-events-none");
+      menu.classList.remove("pointer-events-auto");
+      menu.classList.add("pointer-events-none");
     }, 300);
   }
 

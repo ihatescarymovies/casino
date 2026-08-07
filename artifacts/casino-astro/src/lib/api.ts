@@ -8,6 +8,7 @@ export async function apiFetch<T = unknown>(
   try {
     const response = await fetch(url, {
       ...options,
+      signal: AbortSignal.timeout(3000),
       headers: {
         "Content-Type": "application/json",
         ...options?.headers,
