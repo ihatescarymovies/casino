@@ -3,6 +3,7 @@ import { useGameWallet } from "@/hooks/use-game-wallet";
 import { usePlaceBet, useVerifyRound } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { formatCents } from "@/lib/formatters";
 import {
   Shield,
   RotateCcw,
@@ -58,10 +59,6 @@ function getNumberColor(n: number): "red" | "black" | "green" {
   if (n === 0) return "green";
   if (RED_NUMBERS.has(n)) return "red";
   return "black";
-}
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
 }
 
 function generateClientSeed(): string {

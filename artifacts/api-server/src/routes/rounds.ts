@@ -27,21 +27,12 @@ import { engineRegistry } from "../engines";
 import * as hashChain from "../lib/hash-chain";
 import { GameRoundError } from "../lib/errors";
 import type { GameRoundData } from "../lib/game-engine";
+import { requireAuth } from "../lib/auth-helpers";
 import * as wallet from "../lib/wallet";
 import * as demoWallet from "../lib/demo-wallet";
 import { verifyReceipt } from "../lib/fairness";
 
 const router = Router();
-
-/* ── Helpers ────────────────────────────────────────────────────────── */
-
-function requireAuth(req: Request, res: Response): string | null {
-  if (!req.isAuthenticated() || !req.user?.id) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  return req.user.id;
-}
 
 /* ── POST /api/rounds — Place a bet ────────────────────────────────── */
 
@@ -51,8 +42,9 @@ router.post(
   rateLimitMiddleware,
   validate(PlaceBetBody),
   async (req: Request, res: Response) => {
-    const userId = requireAuth(req, res);
-    if (!userId) return;
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const userId = user.id;
 
     const { gameType, betAmount, clientSeed, gameParams } = req.body;
     const isDemo = gameParams?.demo === true;
@@ -124,8 +116,9 @@ router.get(
   "/",
   validateQuery(ListRoundsQueryParams),
   async (req: Request, res: Response) => {
-    const userId = requireAuth(req, res);
-    if (!userId) return;
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const userId = user.id;
 
     const limit = Math.min(
       Math.max((req as any).parsedQuery?.limit ?? 20, 1),
@@ -148,8 +141,9 @@ router.get(
 /* ── GET /api/rounds/:id — Single round detail ─────────────────────── */
 
 router.get("/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const user = requireAuth(req, res);
+  if (!user) return;
+  const userId = user.id;
 
   const rawId = req.params.id;
   const roundId = parseInt(Array.isArray(rawId) ? rawId[0] : rawId, 10);
@@ -196,8 +190,9 @@ router.get(
   "/:id/receipt",
   rateLimitMiddleware,
   async (req: Request, res: Response) => {
-    const userId = requireAuth(req, res);
-    if (!userId) return;
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const userId = user.id;
     const roundId = Number(req.params.id);
     if (!Number.isInteger(roundId)) {
       res.status(400).json({ error: "Invalid round ID" });
@@ -236,8 +231,9 @@ router.get(
 /* ── POST /api/rounds/:id — Handle interactive game actions ────────── */
 
 router.post("/:id", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const user = requireAuth(req, res);
+  if (!user) return;
+  const userId = user.id;
 
   const rawId = req.params.id;
   const roundId = parseInt(Array.isArray(rawId) ? rawId[0] : rawId, 10);
@@ -318,8 +314,9 @@ router.post("/:id", async (req: Request, res: Response) => {
 
 /* ── GET /api/rounds/:id/fairness — Sanitized fairness data ─────────── */
 router.get("/:id/fairness", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const user = requireAuth(req, res);
+  if (!user) return;
+  const userId = user.id;
   const roundId = Number(req.params.id);
   if (!Number.isSafeInteger(roundId) || roundId < 1) {
     res.status(400).json({ error: "Invalid round ID" });
@@ -363,8 +360,9 @@ router.post(
   "/:id/verify",
   validate(VerifyRoundBody),
   async (req: Request, res: Response) => {
-    const userId = requireAuth(req, res);
-    if (!userId) return;
+    const user = requireAuth(req, res);
+    if (!user) return;
+    const userId = user.id;
     const roundId = Number(req.params.id); // URL is canonical; body roundId is ignored.
     if (!Number.isSafeInteger(roundId) || roundId < 1) {
       res.status(400).json({ error: "Invalid round ID" });

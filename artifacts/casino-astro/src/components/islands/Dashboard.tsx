@@ -1,5 +1,5 @@
-import { useAuth } from "@workspace/replit-auth-web";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import {
   useListGames,
   getListGamesQueryKey,
@@ -11,6 +11,7 @@ import {
 } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { features } from "@/lib/config";
+import { formatCents } from "@/lib/formatters";
 import {
   Trophy,
   Zap,
@@ -89,14 +90,6 @@ interface DepositSession {
   filled_amount: string | null;
   filled_currency: string | null;
   created_at: string;
-}
-
-function formatCents(cents: number): string {
-  const dollars = cents / 100;
-  return `$${dollars.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 }
 
 function relativeTime(timestamp: string): string {
@@ -182,7 +175,7 @@ const PENDING_STATUSES = new Set(["open", "verifying", "partial"]);
 const POLL_INTERVAL_MS = 10_000;
 
 export default function Dashboard() {
-  const { user, isLoading, isAuthenticated, logout, login } = useAuth();
+  const { user, isLoading, isAuthenticated, logout } = useRequireAuth();
   const [deposits, setDeposits] = useState<DepositSession[]>([]);
   const [depositsLoading, setDepositsLoading] = useState(true);
   const [isPolling, setIsPolling] = useState(false);
@@ -253,12 +246,6 @@ export default function Dashboard() {
       },
     },
   });
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      login();
-    }
-  }, [isLoading, isAuthenticated, login]);
 
   useEffect(() => {
     if (rounds) {

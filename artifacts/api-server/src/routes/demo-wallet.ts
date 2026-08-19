@@ -7,45 +7,37 @@
  */
 
 import { Router, type Request, type Response } from "express";
+import { requireAuth } from "../lib/auth-helpers";
 import * as demoWallet from "../lib/demo-wallet";
 
 const router = Router();
 
-/* ── Helpers ────────────────────────────────────────────────────────── */
-
-function requireAuth(req: Request, res: Response): string | null {
-  if (!req.isAuthenticated() || !req.user?.id) {
-    res.status(401).json({ demo: true, error: "Unauthorized" });
-    return null;
-  }
-  return req.user.id;
-}
-
 /* ── GET /api/demo/wallet — Current demo balance ──────────────────── */
 
 router.get("/", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const user = requireAuth(req, res, { demo: true });
+  if (!user) return;
 
-  const balanceInfo = await demoWallet.getDemoBalance(userId);
+  const balanceInfo = await demoWallet.getDemoBalance(user.id);
   res.status(200).json(balanceInfo);
 });
 
 /* ── POST /api/demo/wallet/reset — Reset demo wallet ───────────────── */
 
 router.post("/reset", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const user = requireAuth(req, res, { demo: true });
+  if (!user) return;
 
-  const result = await demoWallet.resetDemoWallet(userId);
+  const result = await demoWallet.resetDemoWallet(user.id);
   res.status(200).json(result);
 });
 
 /* ── GET /api/demo/wallet/history — Paginated transaction history ── */
 
 router.get("/history", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const user = requireAuth(req, res, { demo: true });
+  if (!user) return;
+  const userId = user.id;
 
   const rawLimit = parseInt(req.query.limit as string, 10);
   const rawOffset = parseInt(req.query.offset as string, 10);

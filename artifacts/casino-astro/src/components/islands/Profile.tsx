@@ -1,5 +1,5 @@
-import { useAuth } from "@workspace/replit-auth-web";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import {
   User,
   Mail,
@@ -88,18 +88,12 @@ function ToggleRow({
 }
 
 export default function Profile() {
-  const { user, isLoading, isAuthenticated, logout, login } = useAuth();
+  const { user, isLoading, isAuthenticated, logout } = useRequireAuth();
   const { toast } = useToast();
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [quickSpinEnabled, setQuickSpinEnabled] = useState(false);
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [currency, setCurrency] = useState("USD");
-
-  useEffect(() => {
-    if (!isLoading && !isAuthenticated) {
-      login();
-    }
-  }, [isLoading, isAuthenticated, login]);
 
   const handleComingSoon = () => {
     toast({

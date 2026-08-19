@@ -1,5 +1,6 @@
-import { useAuth } from "@workspace/replit-auth-web";
 import { useEffect, useState, useCallback, useRef } from "react";
+import { useRequireAuth } from "@/hooks/use-require-auth";
+import { formatCentsCompact } from "@/lib/formatters";
 import {
   CreditCard,
   Lock,
@@ -84,10 +85,6 @@ const MAX_CENTS = 1_000_000;
 const POLL_INTERVAL_MS = 3000;
 const POLL_MAX_ATTEMPTS = 10;
 
-function formatUSD(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 0 })}`;
-}
-
 function getFriendlyError(error: string): string {
   const lower = error.toLowerCase();
   if (lower.includes("network") || lower.includes("fetch"))
@@ -135,7 +132,7 @@ function getCsrfToken(): string | undefined {
 }
 
 export default function Cashier() {
-  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useRequireAuth();
 
   const [tab, setTab] = useState<Tab>("deposit");
   const [step, setStep] = useState<Step>("method");
@@ -235,10 +232,6 @@ export default function Cashier() {
     setPolling(false);
     setPollStatus("Payment is still being processed. Check back shortly.");
   }, []);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) login();
-  }, [authLoading, isAuthenticated, login]);
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
@@ -439,13 +432,15 @@ export default function Cashier() {
           <p className="text-muted-foreground mb-8">
             {tab === "deposit" ? (
               <>
-                Your deposit of {formatUSD(selectedAmount ?? 0)} is being
-                processed. Funds will appear in your account shortly.
+                Your deposit of {formatCentsCompact(selectedAmount ?? 0)} is
+                being processed. Funds will appear in your account shortly.
               </>
             ) : (
               <>
                 Your withdrawal of{" "}
-                {formatUSD(Math.round(parseFloat(withdrawAmount) * 100) || 0)}{" "}
+                {formatCentsCompact(
+                  Math.round(parseFloat(withdrawAmount) * 100) || 0,
+                )}{" "}
                 via {withdrawChain}/{withdrawCurrency} is being processed.
                 You'll receive your crypto at the address provided.
               </>
@@ -626,7 +621,7 @@ export default function Cashier() {
                           }`}
                           onClick={() => selectPreset(cents)}
                         >
-                          {formatUSD(cents)}
+                          {formatCentsCompact(cents)}
                         </button>
                       );
                     })}
@@ -733,7 +728,7 @@ export default function Cashier() {
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Amount</span>
                         <span className="text-2xl font-black text-primary drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]">
-                          {formatUSD(selectedAmount ?? 0)}
+                          {formatCentsCompact(selectedAmount ?? 0)}
                         </span>
                       </div>
                       <div className="h-px bg-white/5" />
@@ -942,7 +937,7 @@ export default function Cashier() {
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-white">
-                        {formatUSD(tx.amount_usd ?? 0)}
+                        {formatCentsCompact(tx.amount_usd ?? 0)}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
                         {new Date(tx.created_at).toLocaleDateString("en-US", {

@@ -4,6 +4,7 @@ import { usePlaceBet } from "@workspace/api-client-react";
 import { API_BASE_URL } from "@/lib/config";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { formatCents } from "@/lib/formatters";
 import {
   Loader2,
   TrendingUp,
@@ -49,10 +50,6 @@ interface GraphPoint {
 }
 
 /* ─── Helpers ─────────────────────────────────────────────────────── */
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-}
 
 function formatMultiplier(m: number): string {
   return `${m.toFixed(2)}x`;

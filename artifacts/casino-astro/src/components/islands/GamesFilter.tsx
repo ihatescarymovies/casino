@@ -4,6 +4,7 @@ import { useGetWallet } from "@workspace/api-client-react";
 import type { Game } from "@workspace/api-client-react";
 import { filterGamesByCategory, filterGamesBySearch } from "@/lib/game-helpers";
 import { getGameFallbackImage } from "@/lib/game-helpers";
+import { formatCents } from "@/lib/formatters";
 
 interface GamesFilterProps {
   categories: Array<{ name: string; count: number }>;
@@ -11,13 +12,6 @@ interface GamesFilterProps {
 }
 
 type SortOption = "name-asc" | "name-desc" | "hot-first" | "new-first";
-
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 function GameCardReact({ game }: { game: Game }) {
   const { data: wallet, isLoading: walletLoading } = useGetWallet();

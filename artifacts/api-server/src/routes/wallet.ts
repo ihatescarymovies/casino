@@ -8,27 +8,18 @@
 import { Router, type Request, type Response } from "express";
 import { GetWalletHistoryQueryParams } from "@workspace/api-zod";
 import { validateQuery } from "../lib/validation";
+import { requireAuth } from "../lib/auth-helpers";
 import * as wallet from "../lib/wallet";
 
 const router = Router();
 
-/* ── Helpers ────────────────────────────────────────────────────────── */
-
-function requireAuth(req: Request, res: Response): string | null {
-  if (!req.isAuthenticated() || !req.user?.id) {
-    res.status(401).json({ error: "Unauthorized" });
-    return null;
-  }
-  return req.user.id;
-}
-
 /* ── GET /api/wallet — Current balance ──────────────────────────────── */
 
 router.get("/", async (req: Request, res: Response) => {
-  const userId = requireAuth(req, res);
-  if (!userId) return;
+  const user = requireAuth(req, res);
+  if (!user) return;
 
-  const balanceInfo = await wallet.getBalance(userId);
+  const balanceInfo = await wallet.getBalance(user.id);
   res.status(200).json(balanceInfo);
 });
 
@@ -38,8 +29,8 @@ router.get(
   "/history",
   validateQuery(GetWalletHistoryQueryParams),
   async (req: Request, res: Response) => {
-    const userId = requireAuth(req, res);
-    if (!userId) return;
+    const user = requireAuth(req, res);
+    if (!user) return;
 
     const parsed = (req as any).parsedQuery ?? {};
     const limit = Math.min(Math.max(parsed.limit ?? 20, 1), 100);
@@ -48,7 +39,7 @@ router.get(
       1,
     );
 
-    const history = await wallet.getTransactionHistory(userId, page, limit);
+    const history = await wallet.getTransactionHistory(user.id, page, limit);
     res.status(200).json(history.transactions);
   },
 );

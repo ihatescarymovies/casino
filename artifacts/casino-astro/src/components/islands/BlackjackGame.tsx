@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatCents } from "@/lib/formatters";
 import {
   Loader2,
   ShieldCheck,
@@ -60,10 +61,6 @@ const SUIT_COLORS: Record<string, string> = {
 };
 
 /* ── Helpers ────────────────────────────────────────────────────── */
-function formatCents(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}`;
-}
-
 function generateClientSeed(): string {
   const arr = new Uint8Array(16);
   crypto.getRandomValues(arr);

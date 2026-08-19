@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { formatCurrency, formatDate, formatTimeAgo } from "./formatters";
+import {
+  formatCurrency,
+  formatCents,
+  formatCentsCompact,
+  formatDate,
+  formatTimeAgo,
+} from "./formatters";
 
 describe("formatCurrency", () => {
   it("formats whole dollars", () => {
@@ -20,6 +26,50 @@ describe("formatCurrency", () => {
 
   it("truncates cents to whole dollars", () => {
     expect(formatCurrency(99.99)).toBe("$100");
+  });
+});
+
+describe("formatCents", () => {
+  it("formats whole dollar amounts with .00", () => {
+    expect(formatCents(10000)).toBe("$100.00");
+  });
+
+  it("formats fractional cents", () => {
+    expect(formatCents(12550)).toBe("$125.50");
+  });
+
+  it("formats zero", () => {
+    expect(formatCents(0)).toBe("$0.00");
+  });
+
+  it("formats negative amounts", () => {
+    expect(formatCents(-5000)).toBe("-$50.00");
+  });
+
+  it("formats large amounts with commas", () => {
+    expect(formatCents(123456700)).toBe("$1,234,567.00");
+  });
+});
+
+describe("formatCentsCompact", () => {
+  it("formats whole dollar amounts without decimals", () => {
+    expect(formatCentsCompact(10000)).toBe("$100");
+  });
+
+  it("rounds fractional cents to whole dollars", () => {
+    expect(formatCentsCompact(12550)).toBe("$126");
+  });
+
+  it("formats zero", () => {
+    expect(formatCentsCompact(0)).toBe("$0");
+  });
+
+  it("formats negative amounts", () => {
+    expect(formatCentsCompact(-5000)).toBe("-$50");
+  });
+
+  it("formats large amounts with commas", () => {
+    expect(formatCentsCompact(123456700)).toBe("$1,234,567");
   });
 });
 

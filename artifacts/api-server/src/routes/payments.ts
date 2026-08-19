@@ -18,6 +18,7 @@ import {
 } from "../middleware/rateLimitMiddleware";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { requireAuth } from "../lib/auth-helpers";
 
 const router = Router();
 
@@ -171,9 +172,10 @@ router.post(
   "/checkout",
   checkoutLimiter,
   validateBody(checkoutBodySchema),
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
-      if (!req.isAuthenticated()) {
+      const user = requireAuth(req, res);
+      if (!user) {
         auditLog({
           userId: undefined,
           action: "checkout",
@@ -181,7 +183,6 @@ router.post(
           result: "denied",
           details: { reason: "not authenticated" },
         });
-        res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
@@ -197,10 +198,9 @@ router.post(
       }
 
       const payram = getPayramClient();
-      const user = req.user;
 
       const checkout = await payram.payments.initiatePayment({
-        customerEmail: user.email ?? undefined,
+        customerEmail: user.email ?? `user-${user.id}@casino.local`,
         customerId: String(user.id),
         amountInUSD: pkg.amountInUSD,
       });
@@ -248,9 +248,10 @@ router.post(
   "/shareable-link",
   shareableLinkLimiter,
   validateBody(shareableLinkBodySchema),
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
-      if (!req.isAuthenticated()) {
+      const user = requireAuth(req, res);
+      if (!user) {
         auditLog({
           userId: undefined,
           action: "shareable-link",
@@ -258,12 +259,11 @@ router.post(
           result: "denied",
           details: { reason: "not authenticated" },
         });
-        res.status(401).json({ error: "Unauthorized" });
         return;
       }
-      if (!isAdmin(req.user)) {
+      if (!isAdmin(user)) {
         auditLog({
-          userId: String(req.user?.id),
+          userId: String(user.id),
           action: "shareable-link",
           ip: getClientIp(req),
           result: "denied",
@@ -292,7 +292,7 @@ router.post(
       );
 
       auditLog({
-        userId: String(req.user?.id),
+        userId: String(user.id),
         action: "shareable-link",
         ip: getClientIp(req),
         result: "success",
@@ -302,7 +302,7 @@ router.post(
     } catch (err: any) {
       logger.error({ err }, "Shareable link error");
       auditLog({
-        userId: String(req.user?.id),
+        userId: "unknown",
         action: "shareable-link",
         ip: getClientIp(req),
         result: "failed",
@@ -312,17 +312,15 @@ router.post(
   },
 );
 
-router.get("/status/:referenceId", async (req: any, res) => {
+router.get("/status/:referenceId", async (req: Request, res: Response) => {
   try {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+    const user = requireAuth(req, res);
+    if (!user) return;
     const rows = await db.execute(
       sql`SELECT reference_id, status, filled_amount, filled_currency, amount_usd, updated_at
           FROM payment_sessions
           WHERE reference_id = ${req.params.referenceId}
-            AND (user_id = ${req.user.id} OR user_id IS NULL)
+            AND (user_id = ${user.id} OR user_id IS NULL)
           LIMIT 1`,
     );
     const row = rows.rows[0] as Record<string, any> | undefined;
@@ -354,16 +352,14 @@ router.get("/status/:referenceId", async (req: any, res) => {
   }
 });
 
-router.get("/history", async (req: any, res) => {
+router.get("/history", async (req: Request, res: Response) => {
   try {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+    const user = requireAuth(req, res);
+    if (!user) return;
     const rows = await db.execute(
       sql`SELECT reference_id, amount_usd, status, filled_amount, filled_currency, created_at
           FROM payment_sessions
-          WHERE user_id = ${req.user.id}
+          WHERE user_id = ${user.id}
           ORDER BY created_at DESC
           LIMIT 20`,
     );
@@ -437,9 +433,10 @@ router.post(
   "/withdraw",
   withdrawLimiter,
   validateBody(withdrawBodySchema),
-  async (req: any, res) => {
+  async (req: Request, res: Response) => {
     try {
-      if (!req.isAuthenticated()) {
+      const user = requireAuth(req, res);
+      if (!user) {
         auditLog({
           userId: "unknown",
           action: "withdraw",
@@ -447,7 +444,6 @@ router.post(
           result: "denied",
           details: { reason: "Not authenticated" },
         });
-        res.status(401).json({ error: "Unauthorized" });
         return;
       }
 
@@ -467,7 +463,7 @@ router.post(
         !SUPPORTED_PAYOUT_CHAINS[chain].includes(currency)
       ) {
         auditLog({
-          userId: String(req.user.id),
+          userId: String(user.id),
           action: "withdraw",
           ip: getClientIp(req),
           result: "denied",
@@ -480,7 +476,7 @@ router.post(
       }
       if (!isValidAddress(String(toAddress))) {
         auditLog({
-          userId: String(req.user.id),
+          userId: String(user.id),
           action: "withdraw",
           ip: getClientIp(req),
           result: "denied",
@@ -489,8 +485,6 @@ router.post(
         res.status(400).json({ error: "Invalid destination wallet address" });
         return;
       }
-
-      const user = req.user;
 
       const walletRows = await db.execute(
         sql`SELECT id, balance FROM wallets WHERE user_id = ${user.id} LIMIT 1`,
@@ -562,7 +556,7 @@ router.post(
     } catch (err: any) {
       logger.error({ err }, "Withdrawal error");
       auditLog({
-        userId: req.user ? String(req.user.id) : "unknown",
+        userId: "unknown",
         action: "withdraw",
         ip: getClientIp(req),
         result: "failed",
@@ -573,16 +567,14 @@ router.post(
   },
 );
 
-router.get("/withdrawals", async (req: any, res) => {
+router.get("/withdrawals", async (req: Request, res: Response) => {
   try {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+    const user = requireAuth(req, res);
+    if (!user) return;
     const rows = await db.execute(
       sql`SELECT id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, failure_reason, created_at, updated_at
           FROM withdrawal_requests
-          WHERE user_id = ${req.user.id}
+          WHERE user_id = ${user.id}
           ORDER BY created_at DESC
           LIMIT 20`,
     );
@@ -593,16 +585,14 @@ router.get("/withdrawals", async (req: any, res) => {
   }
 });
 
-router.get("/withdrawals/:id", async (req: any, res) => {
+router.get("/withdrawals/:id", async (req: Request, res: Response) => {
   try {
-    if (!req.isAuthenticated()) {
-      res.status(401).json({ error: "Unauthorized" });
-      return;
-    }
+    const user = requireAuth(req, res);
+    if (!user) return;
     const rows = await db.execute(
       sql`SELECT id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, failure_reason, created_at, updated_at
           FROM withdrawal_requests
-          WHERE id = ${req.params.id} AND user_id = ${req.user.id}
+          WHERE id = ${req.params.id} AND user_id = ${user.id}
           LIMIT 1`,
     );
     const row = rows.rows[0] as Record<string, any> | undefined;

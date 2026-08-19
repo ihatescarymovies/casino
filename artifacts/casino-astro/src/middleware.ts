@@ -2,7 +2,10 @@ import { defineMiddleware } from "astro:middleware";
 import { randomBytes } from "node:crypto";
 import { API_BASE_URL, rateLimit, csrf, securityHeaders } from "@/lib/config";
 
-const API_PROXY_URL = "http://localhost:3001";
+// Proxy all /api/* requests to the backend API server.
+// Uses the same API_BASE_URL that the rest of the app uses,
+// so changing the env var is the single source of truth.
+const API_PROXY_URL = API_BASE_URL;
 const LOCAL_API_PATHS = ["/api/health", "/api/deposit"];
 
 function generateTraceId(): string {

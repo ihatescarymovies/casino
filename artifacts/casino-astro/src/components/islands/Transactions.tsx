@@ -1,7 +1,8 @@
-import { useAuth } from "@workspace/replit-auth-web";
 import { useEffect, useMemo, useState } from "react";
+import { useRequireAuth } from "@/hooks/use-require-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { formatCents } from "@/lib/formatters";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -20,128 +21,28 @@ interface Transaction {
   description: string;
 }
 
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: "txn-001",
-    date: "2026-06-22T14:30:00Z",
-    type: "deposit",
-    amount: 50000,
-    status: "completed",
-    description: "Credit Card Deposit",
-  },
-  {
-    id: "txn-002",
-    date: "2026-06-21T18:45:00Z",
-    type: "bet",
-    amount: 2500,
-    status: "completed",
-    description: "Slots — Mega Fortune",
-  },
-  {
-    id: "txn-003",
-    date: "2026-06-21T19:02:00Z",
-    type: "win",
-    amount: 12500,
-    status: "completed",
-    description: "Slots — Mega Fortune",
-  },
-  {
-    id: "txn-004",
-    date: "2026-06-20T10:15:00Z",
-    type: "withdrawal",
-    amount: 20000,
-    status: "pending",
-    description: "Bank Transfer",
-  },
-  {
-    id: "txn-005",
-    date: "2026-06-19T22:30:00Z",
-    type: "bet",
-    amount: 5000,
-    status: "completed",
-    description: "Blackjack — Table 7",
-  },
-  {
-    id: "txn-006",
-    date: "2026-06-19T22:45:00Z",
-    type: "win",
-    amount: 7500,
-    status: "completed",
-    description: "Blackjack — Table 7",
-  },
-  {
-    id: "txn-007",
-    date: "2026-06-18T09:00:00Z",
-    type: "bonus",
-    amount: 10000,
-    status: "completed",
-    description: "Welcome Bonus",
-  },
-  {
-    id: "txn-008",
-    date: "2026-06-17T16:20:00Z",
-    type: "deposit",
-    amount: 25000,
-    status: "completed",
-    description: "Crypto Deposit (BTC)",
-  },
-  {
-    id: "txn-009",
-    date: "2026-06-16T20:00:00Z",
-    type: "bet",
-    amount: 10000,
-    status: "failed",
-    description: "Roulette — European",
-  },
-  {
-    id: "txn-010",
-    date: "2026-06-15T11:30:00Z",
-    type: "win",
-    amount: 50000,
-    status: "completed",
-    description: "Progressive Jackpot — Divine Fortune",
-  },
-  {
-    id: "txn-011",
-    date: "2026-06-14T14:00:00Z",
-    type: "withdrawal",
-    amount: 15000,
-    status: "completed",
-    description: "PayPal",
-  },
-  {
-    id: "txn-012",
-    date: "2026-06-13T21:15:00Z",
-    type: "bet",
-    amount: 3000,
-    status: "completed",
-    description: "Poker — Texas Hold'em",
-  },
-  {
-    id: "txn-013",
-    date: "2026-06-12T08:45:00Z",
-    type: "bonus",
-    amount: 5000,
-    status: "completed",
-    description: "Weekly Reload Bonus",
-  },
-  {
-    id: "txn-014",
-    date: "2026-06-11T17:30:00Z",
-    type: "deposit",
-    amount: 100000,
-    status: "completed",
-    description: "Bank Wire",
-  },
-  {
-    id: "txn-015",
-    date: "2026-06-10T13:00:00Z",
-    type: "win",
-    amount: 2200,
-    status: "completed",
-    description: "Baccarat — VIP Room",
-  },
-];
+/**
+ * Map the DB transaction type (from /api/wallet/history) to the
+ * frontend Transaction type.
+ */
+function mapDbType(
+  dbType: string,
+): "deposit" | "withdrawal" | "bet" | "win" | "bonus" {
+  switch (dbType) {
+    case "bet":
+      return "bet";
+    case "payout":
+      return "win";
+    case "deposit":
+      return "deposit";
+    case "withdrawal":
+      return "withdrawal";
+    case "bonus":
+      return "bonus";
+    default:
+      return "bet";
+  }
+}
 
 const FILTER_OPTIONS: { label: string; value: Transaction["type"] | "all" }[] =
   [
@@ -152,13 +53,6 @@ const FILTER_OPTIONS: { label: string; value: Transaction["type"] | "all" }[] =
     { label: "Wins", value: "win" },
     { label: "Bonuses", value: "bonus" },
   ];
-
-function formatUSD(cents: number): string {
-  return `$${(cents / 100).toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -243,20 +137,43 @@ const STATUS_CONFIG: Record<
 };
 
 export default function Transactions() {
-  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+  const { isAuthenticated, isLoading: authLoading } = useRequireAuth();
   const [filter, setFilter] = useState<Transaction["type"] | "all">("all");
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) login();
-  }, [authLoading, isAuthenticated, login]);
+    if (!isAuthenticated) return;
+    fetch("/api/wallet/history?limit=100&offset=0", {
+      credentials: "include",
+    })
+      .then(async (res) => {
+        if (!res.ok) return [];
+        const data = await res.json();
+        return Array.isArray(data) ? data : [];
+      })
+      .then((rows) => {
+        const mapped: Transaction[] = rows.map((row: Record<string, any>) => ({
+          id: String(row.id),
+          date: row.created_at ?? new Date().toISOString(),
+          type: mapDbType(row.type ?? "bet"),
+          amount: Math.abs(Number(row.amount) || 0),
+          status: (row.status as Transaction["status"]) ?? "completed",
+          description: row.description ?? "",
+        }));
+        setTransactions(mapped);
+      })
+      .catch(() => setTransactions([]))
+      .finally(() => setLoading(false));
+  }, [isAuthenticated]);
 
   const filteredTransactions = useMemo(() => {
-    const sorted = [...MOCK_TRANSACTIONS].sort(
+    const sorted = [...transactions].sort(
       (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
     );
     if (filter === "all") return sorted;
     return sorted.filter((t) => t.type === filter);
-  }, [filter]);
+  }, [filter, transactions]);
 
   const runningBalances = useMemo(() => {
     let balance = 0;
@@ -276,6 +193,20 @@ export default function Transactions() {
   }, [filteredTransactions]);
 
   if (authLoading || (!isAuthenticated && !authLoading)) return null;
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-12 max-w-5xl">
+        <div className="flex items-center gap-3 mb-2">
+          <Receipt className="h-7 w-7 text-primary" />
+          <h1 className="text-3xl font-bold text-white">Transaction History</h1>
+        </div>
+        <div className="bg-card/50 border border-white/5 rounded-2xl backdrop-blur-xl p-10 text-center">
+          <p className="text-muted-foreground">Loading transactions...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-12 max-w-5xl">
@@ -374,7 +305,7 @@ export default function Transactions() {
                       <td className="px-5 py-4 text-right">
                         <span className={`text-sm font-medium ${config.color}`}>
                           {config.sign}
-                          {formatUSD(transaction.amount)}
+                          {formatCents(transaction.amount)}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-center">
@@ -384,7 +315,7 @@ export default function Transactions() {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <span className="text-sm font-medium text-white">
-                          {formatUSD(balance)}
+                          {formatCents(balance)}
                         </span>
                       </td>
                     </tr>
@@ -442,13 +373,13 @@ export default function Transactions() {
                   <span className="text-xs text-muted-foreground">Amount</span>
                   <span className={`text-sm font-medium ${config.color}`}>
                     {config.sign}
-                    {formatUSD(transaction.amount)}
+                    {formatCents(transaction.amount)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">Balance</span>
                   <span className="text-sm font-medium text-white">
-                    {formatUSD(balance)}
+                    {formatCents(balance)}
                   </span>
                 </div>
               </div>
