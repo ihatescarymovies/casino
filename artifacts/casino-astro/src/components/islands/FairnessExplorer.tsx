@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { clientFetch } from "@/lib/api";
 
 type Round = {
   id: number;
@@ -42,12 +43,12 @@ export default function FairnessExplorer({ gameType }: { gameType: string }) {
   );
 
   useEffect(() => {
-    fetch("/api/rounds", { credentials: "include" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json();
-      })
-      .then((data: Round[]) => {
+    clientFetch<Round[]>("/api/rounds")
+      .then((data) => {
+        if (!data) {
+          setState("error");
+          return;
+        }
         const mine = data.filter((round) => round.gameType === gameType);
         setRounds(mine);
         setSelected(mine[0]?.id);
@@ -63,12 +64,11 @@ export default function FairnessExplorer({ gameType }: { gameType: string }) {
     }
     setFairness(null);
     setVerification(null);
-    fetch(`/api/rounds/${selected}/fairness`, { credentials: "include" })
-      .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json();
+    clientFetch<Fairness>(`/api/rounds/${selected}/fairness`)
+      .then((data) => {
+        if (data) setFairness(data);
+        else setState("error");
       })
-      .then(setFairness)
       .catch(() => setState("error"));
   }, [selected]);
 

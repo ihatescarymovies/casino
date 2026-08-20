@@ -40,6 +40,7 @@ export const securityHeaders: Record<string, string> = {
   "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
   "X-Frame-Options": "DENY",
   "X-Content-Type-Options": "nosniff",
+  "X-XSS-Protection": "0", // Disable legacy XSS auditor in favor of CSP
   "Referrer-Policy": "strict-origin-when-cross-origin",
   "X-DNS-Prefetch-Control": "on",
   "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",

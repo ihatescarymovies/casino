@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, winnersTable } from "@workspace/db";
 import { desc } from "drizzle-orm";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -18,6 +19,7 @@ router.get("/", async (req, res) => {
     }));
     res.json(serialized);
   } catch (err) {
+    logger.error({ err }, "Failed to fetch winners");
     res.status(500).json({ error: "Failed to fetch winners" });
   }
 });

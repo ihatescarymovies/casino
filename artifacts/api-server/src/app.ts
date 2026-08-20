@@ -10,6 +10,36 @@ import { metricsMiddleware } from "./middleware/metricsMiddleware";
 import { securityHeaders } from "./middleware/securityHeaders";
 import { register } from "./lib/metrics";
 
+/**
+ * Allowed CORS origins.
+ *
+ * Set ALLOWED_ORIGINS env var to a comma-separated list of origins
+ * (e.g. "https://casino.timewarper.me,http://localhost:4321").
+ *
+ * Defaults cover local dev and the production domain.
+ * In test mode, all origins are allowed (matches rate-limiter skip pattern).
+ */
+function getAllowedOrigins(): string[] {
+  if (process.env.NODE_ENV === "test") return ["*"];
+
+  const envOrigins = process.env.ALLOWED_ORIGINS;
+  if (envOrigins) {
+    return envOrigins
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean);
+  }
+
+  return [
+    "http://localhost:4321", // Astro dev server
+    "http://localhost:3000", // API server (same-origin)
+    "https://casino.timewarper.me", // Production
+  ];
+}
+
+const allowedOrigins = getAllowedOrigins();
+const isCorsOpen = allowedOrigins.includes("*");
+
 const app: Express = express();
 
 app.use(
@@ -27,7 +57,22 @@ app.use(
 );
 
 app.use(securityHeaders);
-app.use(cors({ credentials: true, origin: true }));
+app.use(
+  cors({
+    credentials: true,
+    origin: isCorsOpen
+      ? true
+      : (origin, callback) => {
+          // Allow requests with no origin (server-to-server, curl, webhooks)
+          if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+          } else {
+            logger.warn({ origin }, "CORS origin rejected");
+            callback(new Error("Not allowed by CORS"));
+          }
+        },
+  }),
+);
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));

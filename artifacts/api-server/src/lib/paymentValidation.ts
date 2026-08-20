@@ -45,28 +45,3 @@ export const withdrawBodySchema = z.object({
     .min(20, "Invalid address length")
     .max(64, "Invalid address length"),
 });
-
-// ── Validation helper ─────────────────────────────────────
-
-import type { NextFunction, Request, Response } from "express";
-
-export function validateBody<T>(
-  schema: z.ZodSchema<T>,
-): (req: Request, res: Response, next: NextFunction) => void {
-  return (req, res, next) => {
-    const result = schema.safeParse(req.body);
-    if (!result.success) {
-      res.status(400).json({
-        error: "Validation failed",
-        details: result.error.issues.map((i) => ({
-          field: i.path.join(".") || "body",
-          message: i.message,
-        })),
-      });
-      return;
-    }
-    // Attach parsed body for downstream handlers
-    req.body = result.data;
-    next();
-  };
-}

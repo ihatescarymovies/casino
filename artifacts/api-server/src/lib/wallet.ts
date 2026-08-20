@@ -2,11 +2,19 @@ import { db } from "@workspace/db";
 import * as schema from "@workspace/db";
 import { eq, desc, sql } from "drizzle-orm";
 import { InsufficientFunds, WalletNotFound, WalletError } from "./errors";
+import { logger } from "./logger";
 
 export interface BetResult {
   transactionId: number;
   balanceBefore: number;
   balanceAfter: number;
+}
+
+export interface WithdrawalDebitResult {
+  withdrawalRequestId: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  walletId: number;
 }
 
 export interface TransactionHistoryResult {
@@ -214,6 +222,102 @@ export async function creditBalance(
       transactionId: transaction.id,
       balanceBefore,
       balanceAfter,
+    };
+  });
+}
+
+/**
+ * Debit wallet for a withdrawal atomically.
+ * 1. Lock wallet row with SELECT FOR UPDATE
+ * 2. Verify balance >= amount
+ * 3. Insert withdrawal request (status: pending)
+ * 4. Debit balance
+ * 5. Record transaction
+ *
+ * The external payout (Payram API) is called OUTSIDE this transaction.
+ * If it fails, the withdrawal request remains in 'pending' status and
+ * the wallet debit stays in place — the request can be retried or
+ * resolved manually.
+ *
+ * All amounts in integer cents.
+ */
+export async function withdrawalDebit(
+  userId: string,
+  amount: number,
+  chain: string,
+  currency: string,
+  toAddress: string,
+): Promise<WithdrawalDebitResult> {
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new WalletError("Withdrawal amount must be a positive integer", 400);
+  }
+
+  return await db.transaction(async (tx) => {
+    const [wallet] = await tx
+      .select()
+      .from(schema.walletsTable)
+      .where(eq(schema.walletsTable.userId, userId))
+      .for("update");
+
+    if (!wallet) {
+      throw new WalletNotFound(`Wallet not found for user ${userId}`);
+    }
+
+    if (wallet.balance < amount) {
+      throw new InsufficientFunds();
+    }
+
+    const balanceBefore = wallet.balance;
+    const balanceAfter = balanceBefore - amount;
+
+    // Insert withdrawal request as pending — payout_id filled after Payram call
+    const [withdrawalRequest] = await tx
+      .insert(schema.withdrawalRequestsTable)
+      .values({
+        userId,
+        blockchainCode: chain,
+        currencyCode: currency,
+        amountUsd: amount,
+        toAddress,
+        status: "pending",
+      })
+      .returning();
+
+    // Debit wallet
+    await tx
+      .update(schema.walletsTable)
+      .set({ balance: balanceAfter, updatedAt: new Date() })
+      .where(eq(schema.walletsTable.id, wallet.id));
+
+    // Record transaction
+    await tx.insert(schema.transactionsTable).values({
+      walletId: wallet.id,
+      userId,
+      type: "withdrawal",
+      amount: -amount,
+      balanceBefore,
+      balanceAfter,
+      status: "completed",
+      referenceId: String(withdrawalRequest.id),
+      description: `Withdrawal via ${chain}/${currency}`,
+    });
+
+    logger.info(
+      {
+        userId,
+        amount,
+        chain,
+        currency,
+        withdrawalRequestId: withdrawalRequest.id,
+      },
+      "Wallet debited for withdrawal",
+    );
+
+    return {
+      withdrawalRequestId: withdrawalRequest.id,
+      balanceBefore,
+      balanceAfter,
+      walletId: wallet.id,
     };
   });
 }

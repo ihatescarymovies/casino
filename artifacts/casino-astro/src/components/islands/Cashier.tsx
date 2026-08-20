@@ -1,6 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRequireAuth } from "@/hooks/use-require-auth";
+import { clientFetch } from "@/lib/api";
 import { formatCentsCompact } from "@/lib/formatters";
+import { PAYOUT_CHAINS } from "@workspace/api-zod";
 import {
   CreditCard,
   Lock,
@@ -72,13 +74,6 @@ const PACKAGE_FOR_CENTS: Record<number, string> = {
   50000: "vip",
   100000: "vip",
 };
-
-const PAYOUT_CHAINS: { code: string; label: string; currencies: string[] }[] = [
-  { code: "ETH", label: "Ethereum", currencies: ["USDC", "USDT"] },
-  { code: "BASE", label: "Base", currencies: ["USDC"] },
-  { code: "TRX", label: "Tron", currencies: ["USDT"] },
-  { code: "BTC", label: "Bitcoin", currencies: ["USDC", "USDT"] },
-];
 
 const MIN_CENTS = 1000;
 const MAX_CENTS = 1_000_000;
@@ -175,12 +170,12 @@ export default function Cashier() {
   const fetchTransactionHistory = useCallback(async () => {
     setTxLoading(true);
     try {
-      const res = await fetch("/api/payments/history", {
-        credentials: "include",
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const items = Array.isArray(data) ? data : (data.payments ?? []);
+      const data = await clientFetch<
+        TxHistoryItem[] | { payments: TxHistoryItem[] }
+      >("/api/payments/history");
+      const items = Array.isArray(data)
+        ? data
+        : ((data as { payments?: TxHistoryItem[] })?.payments ?? []);
       setTxHistory(items.slice(0, 5));
     } catch {
     } finally {

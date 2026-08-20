@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRequireAuth } from "@/hooks/use-require-auth";
+import { clientFetch } from "@/lib/api";
 import {
   useListGames,
   getListGamesQueryKey,
@@ -261,11 +262,8 @@ export default function Dashboard() {
     }
   }, [rounds, roundsOffset]);
 
-  const fetchHistory = async () => {
-    const r = await fetch("/api/payments/history", {
-      credentials: "include",
-    });
-    const data = await r.json();
+  const fetchHistory = async (): Promise<DepositSession[]> => {
+    const data = await clientFetch<DepositSession[]>("/api/payments/history");
     return Array.isArray(data) ? data : [];
   };
 

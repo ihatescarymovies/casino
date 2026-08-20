@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRequireAuth } from "@/hooks/use-require-auth";
+import { clientFetch } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatCents } from "@/lib/formatters";
@@ -144,16 +145,10 @@ export default function Transactions() {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    fetch("/api/wallet/history?limit=100&offset=0", {
-      credentials: "include",
-    })
-      .then(async (res) => {
-        if (!res.ok) return [];
-        const data = await res.json();
-        return Array.isArray(data) ? data : [];
-      })
+    clientFetch<Record<string, any>[]>("/api/wallet/history?limit=100&offset=0")
       .then((rows) => {
-        const mapped: Transaction[] = rows.map((row: Record<string, any>) => ({
+        const list = Array.isArray(rows) ? rows : [];
+        const mapped: Transaction[] = list.map((row) => ({
           id: String(row.id),
           date: row.created_at ?? new Date().toISOString(),
           type: mapDbType(row.type ?? "bet"),

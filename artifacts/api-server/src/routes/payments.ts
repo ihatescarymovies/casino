@@ -8,8 +8,8 @@ import {
   checkoutBodySchema,
   shareableLinkBodySchema,
   withdrawBodySchema,
-  validateBody,
 } from "../lib/paymentValidation";
+import { validate } from "../lib/validation";
 import {
   checkoutLimiter,
   shareableLinkLimiter,
@@ -18,7 +18,9 @@ import {
 } from "../middleware/rateLimitMiddleware";
 import { db } from "@workspace/db";
 import { sql } from "drizzle-orm";
+import { SUPPORTED_PAYOUT_CHAINS } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth-helpers";
+import * as wallet from "../lib/wallet";
 
 const router = Router();
 
@@ -171,7 +173,7 @@ router.get("/deposit-packages", (_req, res) => {
 router.post(
   "/checkout",
   checkoutLimiter,
-  validateBody(checkoutBodySchema),
+  validate(checkoutBodySchema),
   async (req: Request, res: Response) => {
     try {
       const user = requireAuth(req, res);
@@ -247,7 +249,7 @@ router.post(
 router.post(
   "/shareable-link",
   shareableLinkLimiter,
-  validateBody(shareableLinkBodySchema),
+  validate(shareableLinkBodySchema),
   async (req: Request, res: Response) => {
     try {
       const user = requireAuth(req, res);
@@ -415,13 +417,6 @@ router.post(
 const WITHDRAWAL_MIN_CENTS = 1000;
 const WITHDRAWAL_MAX_CENTS = 1_000_000;
 
-const SUPPORTED_PAYOUT_CHAINS: Record<string, string[]> = {
-  ETH: ["USDC", "USDT"],
-  BASE: ["USDC"],
-  TRX: ["USDT"],
-  BTC: ["USDC", "USDT"],
-};
-
 function isValidAddress(addr: string): boolean {
   if (!addr || addr.length < 20 || addr.length > 64) return false;
   if (/^0x[0-9a-fA-F]{40}$/.test(addr)) return true;
@@ -432,7 +427,7 @@ function isValidAddress(addr: string): boolean {
 router.post(
   "/withdraw",
   withdrawLimiter,
-  validateBody(withdrawBodySchema),
+  validate(withdrawBodySchema),
   async (req: Request, res: Response) => {
     try {
       const user = requireAuth(req, res);
@@ -486,48 +481,75 @@ router.post(
         return;
       }
 
-      const walletRows = await db.execute(
-        sql`SELECT id, balance FROM wallets WHERE user_id = ${user.id} LIMIT 1`,
-      );
-      const wallet = walletRows.rows[0] as
-        | { id: number; balance: number }
-        | undefined;
-      if (!wallet || wallet.balance < amountCents) {
-        auditLog({
-          userId: String(user.id),
-          action: "withdraw",
-          ip: getClientIp(req),
-          result: "denied",
-          details: { reason: "Insufficient balance" },
+      // ── Step 1: Atomically debit wallet + create pending withdrawal ──
+      // Uses SELECT FOR UPDATE to prevent concurrent double-spend.
+      // If Payram fails in step 2, the withdrawal stays pending and
+      // the wallet debit is committed — it can be retried or reversed.
+      let debitResult;
+      try {
+        debitResult = await wallet.withdrawalDebit(
+          user.id,
+          amountCents,
+          chain,
+          currency,
+          String(toAddress),
+        );
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (message.includes("Insufficient funds")) {
+          auditLog({
+            userId: String(user.id),
+            action: "withdraw",
+            ip: getClientIp(req),
+            result: "denied",
+            details: { reason: "Insufficient balance" },
+          });
+          res.status(402).json({ error: "Insufficient balance" });
+          return;
+        }
+        if (message.includes("Wallet not found")) {
+          res.status(404).json({ error: "Wallet not found" });
+          return;
+        }
+        throw err;
+      }
+
+      // ── Step 2: Call Payram payout API (outside transaction) ────────
+      let payout;
+      try {
+        const tokenAmount = String(amountCents / 100);
+        const payram = getPayramClient();
+        payout = await payram.payouts.createPayout({
+          email: user.email ?? `user-${user.id}@casino.local`,
+          blockchainCode: chain as any,
+          currencyCode: currency as any,
+          amount: tokenAmount,
+          toAddress: String(toAddress),
+          customerID: String(user.id),
         });
-        res.status(402).json({ error: "Insufficient balance" });
+      } catch (payramErr) {
+        logger.error(
+          { err: payramErr, userId: user.id, amountCents, chain, currency },
+          "Payram payout API call failed after wallet debit",
+        );
+        // Wallet was already debited. The withdrawal request is in 'pending'
+        // status — it can be retried via a follow-up admin action.
+        res.status(502).json({
+          error:
+            "Payment provider error. Your withdrawal has been recorded and will be processed shortly.",
+        });
         return;
       }
 
-      const tokenAmount = String(amountCents / 100);
-
-      const payram = getPayramClient();
-      const payout = await payram.payouts.createPayout({
-        email: user.email ?? `user-${user.id}@casino.local`,
-        blockchainCode: chain as any,
-        currencyCode: currency as any,
-        amount: tokenAmount,
-        toAddress: String(toAddress),
-        customerID: String(user.id),
-      });
-
+      // ── Step 3: Update withdrawal request with payout details ──────
       await db.execute(
-        sql`INSERT INTO withdrawal_requests (user_id, payout_id, blockchain_code, currency_code, amount_usd, to_address, status, tx_hash, fee, created_at, updated_at)
-            VALUES (${user.id}, ${payout.id ?? null}, ${chain}, ${currency}, ${amountCents}, ${String(toAddress)}, ${payout.status ?? "pending"}, ${payout.txHash ?? null}, ${payout.fee ?? null}, NOW(), NOW())`,
-      );
-
-      const newBalance = wallet.balance - amountCents;
-      await db.execute(
-        sql`UPDATE wallets SET balance = ${newBalance}, updated_at = NOW() WHERE id = ${wallet.id}`,
-      );
-      await db.execute(
-        sql`INSERT INTO transactions (wallet_id, user_id, type, amount, balance_before, balance_after, status, reference_id, description, created_at)
-            VALUES (${wallet.id}, ${user.id}, 'withdrawal', ${-amountCents}, ${wallet.balance}, ${newBalance}, 'completed', ${String(payout.id ?? "")}, 'Crypto withdrawal via PayRam', NOW())`,
+        sql`UPDATE withdrawal_requests
+            SET payout_id = ${payout.id ?? null},
+                status = ${payout.status ?? "pending"},
+                tx_hash = ${payout.txHash ?? null},
+                fee = ${payout.fee ?? null},
+                updated_at = NOW()
+            WHERE id = ${debitResult.withdrawalRequestId}`,
       );
 
       auditLog({
@@ -537,6 +559,7 @@ router.post(
         result: "success",
         details: {
           payoutId: payout.id,
+          withdrawalRequestId: debitResult.withdrawalRequestId,
           amountCents,
           chain,
           currency,

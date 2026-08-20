@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { db, gamesTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
+import { logger } from "../lib/logger";
 
 const router = Router();
 
@@ -19,11 +20,12 @@ router.get("/", async (req, res) => {
       : await query;
     res.json(games);
   } catch (err) {
+    logger.error({ err }, "Failed to fetch games");
     res.status(500).json({ error: "Failed to fetch games" });
   }
 });
 
-router.get("/categories", async (req, res) => {
+router.get("/categories", async (_req, res) => {
   try {
     const games = await db.select().from(gamesTable);
     const categoryMap: Record<string, number> = {};
@@ -45,11 +47,12 @@ router.get("/categories", async (req, res) => {
     }));
     res.json(categories);
   } catch (err) {
+    logger.error({ err }, "Failed to fetch categories");
     res.status(500).json({ error: "Failed to fetch categories" });
   }
 });
 
-router.get("/featured", async (req, res) => {
+router.get("/featured", async (_req, res) => {
   try {
     const games = await db
       .select()
@@ -57,6 +60,7 @@ router.get("/featured", async (req, res) => {
       .where(eq(gamesTable.isFeatured, true));
     res.json(games);
   } catch (err) {
+    logger.error({ err }, "Failed to fetch featured games");
     res.status(500).json({ error: "Failed to fetch featured games" });
   }
 });
@@ -64,6 +68,10 @@ router.get("/featured", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    if (Number.isNaN(id)) {
+      res.status(400).json({ error: "Invalid game ID" });
+      return;
+    }
     const [game] = await db
       .select()
       .from(gamesTable)
@@ -74,6 +82,7 @@ router.get("/:id", async (req, res) => {
     }
     res.json(game);
   } catch (err) {
+    logger.error({ err }, "Failed to fetch game");
     res.status(500).json({ error: "Failed to fetch game" });
   }
 });

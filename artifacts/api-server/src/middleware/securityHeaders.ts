@@ -18,7 +18,7 @@ export function securityHeaders(
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader(
     "Permissions-Policy",
-    "geolocation=(), microphone=(), camera=()",
+    "camera=(), microphone=(), geolocation=(), payment=()",
   );
   res.setHeader(
     "Strict-Transport-Security",
