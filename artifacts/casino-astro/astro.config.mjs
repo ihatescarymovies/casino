@@ -2,9 +2,16 @@
 import { defineConfig } from "astro/config";
 import react from "@astrojs/react";
 import node from "@astrojs/node";
+import vercel from "@astrojs/vercel";
 import tailwindcss from "@tailwindcss/vite";
 
 import { resolve } from "node:path";
+
+// Use the Vercel adapter when building on Vercel; fall back to the Node
+// standalone adapter for local dev / self-hosted production.
+const adapter = process.env.VERCEL
+  ? vercel()
+  : node({ mode: "standalone" });
 
 function fixViteSsrInput() {
   return {
@@ -52,9 +59,7 @@ function fixViteSsrInput() {
 // https://astro.build/config
 export default defineConfig({
   output: "server",
-  adapter: node({
-    mode: "standalone",
-  }),
+  adapter,
   integrations: [react()],
   vite: {
     plugins: [tailwindcss(), fixViteSsrInput()],
