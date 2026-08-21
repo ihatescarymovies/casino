@@ -1,0 +1,55 @@
+---
+import BaseLayout from "@/layouts/BaseLayout.astro";
+
+const returnTo = Astro.url.searchParams.get("returnTo") || "/";
+---
+
+<BaseLayout
+  title="Log In — Charter & Oak"
+  description="Log in to your Charter & Oak Casino account."
+>
+  <section
+    class="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden"
+  >
+    <div
+      class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(220,38,38,0.12),transparent_70%)]"
+    />
+    <div class="container mx-auto px-4 z-10 flex flex-col items-center text-center">
+      <div
+        class="rounded-3xl border border-white/5 bg-card/50 backdrop-blur-xl p-8 md:p-12 max-w-md w-full flex flex-col gap-6"
+      >
+        <div class="flex flex-col gap-2">
+          <h1
+            class="text-3xl md:text-4xl font-bold text-white tracking-tight"
+          >
+            Welcome Back
+          </h1>
+          <p class="text-muted-foreground">
+            Log in to your Charter & Oak account to continue playing.
+          </p>
+        </div>
+
+        <a
+          href={`/api/login?returnTo=${encodeURIComponent(returnTo)}`}
+          class="btn btn-primary w-full shadow-[0_0_15px_rgba(234,179,8,0.4)] text-lg py-3"
+        >
+          Log In
+        </a>
+
+        <div class="flex items-center gap-3">
+          <div class="h-px flex-1 bg-white/10"></div>
+          <span class="text-sm text-muted-foreground">or</span>
+          <div class="h-px flex-1 bg-white/10"></div>
+        </div>
+
+        <p class="text-sm text-muted-foreground">
+          Don't have an account?
+          <a
+            href={`/signup?returnTo=${encodeURIComponent(returnTo)}`}
+            class="text-primary hover:underline">Sign up</a
+          >
+        </p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
