@@ -118,7 +118,7 @@ const resources: Resource[] = [
   <main id="main-content" class="container mx-auto px-4 py-12 flex flex-col gap-16">
     {/* Hero */}
     <div class="text-center max-w-3xl mx-auto">
-      <h1 class="text-4xl md:text-5xl font-bold text-white mb-6 tracking-tight">
+      <h1 class="text-4xl md:text-5xl text-foreground mb-6 tracking-tight">
         Responsible Gambling
       </h1>
       <p class="text-xl text-muted-foreground">
@@ -128,22 +128,22 @@ const resources: Resource[] = [
 
     {/* Self-Exclusion */}
     <section class="flex flex-col gap-6">
-      <div class="border-b border-white/10 pb-4">
-        <h2 class="text-2xl font-bold text-white">Self-Exclusion Options</h2>
+      <div class="border-b border-border pb-4">
+        <h2 class="text-2xl text-foreground">Self-Exclusion Options</h2>
         <p class="text-muted-foreground mt-1">
           Take control of your gambling with flexible exclusion periods.
         </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         {selfExclusionTools.map((tool) => (
-          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+          <div class="rounded-2xl border border-border bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
             <div class="flex items-center gap-3">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={tool.icon} />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold text-white">{tool.title}</h3>
+              <h3 class="text-lg font-semibold text-foreground">{tool.title}</h3>
             </div>
             <p class="text-muted-foreground text-sm leading-1.6">{tool.description}</p>
           </div>
@@ -153,22 +153,22 @@ const resources: Resource[] = [
 
     {/* Deposit Limits */}
     <section class="flex flex-col gap-6">
-      <div class="border-b border-white/10 pb-4">
-        <h2 class="text-2xl font-bold text-white">Deposit Limits</h2>
+      <div class="border-b border-border pb-4">
+        <h2 class="text-2xl text-foreground">Deposit Limits</h2>
         <p class="text-muted-foreground mt-1">
           Set boundaries on how much you can deposit over time.
         </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         {depositLimits.map((tool) => (
-          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+          <div class="rounded-2xl border border-border bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
             <div class="flex items-center gap-3">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={tool.icon} />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold text-white">{tool.title}</h3>
+              <h3 class="text-lg font-semibold text-foreground">{tool.title}</h3>
             </div>
             <p class="text-muted-foreground text-sm leading-1.6">{tool.description}</p>
           </div>
@@ -178,22 +178,22 @@ const resources: Resource[] = [
 
     {/* Session Limits & Reality Check */}
     <section class="flex flex-col gap-6">
-      <div class="border-b border-white/10 pb-4">
-        <h2 class="text-2xl font-bold text-white">Session Limits & Reality Checks</h2>
+      <div class="border-b border-border pb-4">
+        <h2 class="text-2xl text-foreground">Session Limits & Reality Checks</h2>
         <p class="text-muted-foreground mt-1">
           Stay aware of your time and spending with automatic reminders.
         </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         {sessionTools.map((tool) => (
-          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+          <div class="rounded-2xl border border-border bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
             <div class="flex items-center gap-3">
               <div class="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={tool.icon} />
                 </svg>
               </div>
-              <h3 class="text-lg font-semibold text-white">{tool.title}</h3>
+              <h3 class="text-lg font-semibold text-foreground">{tool.title}</h3>
             </div>
             <p class="text-muted-foreground text-sm leading-1.6">{tool.description}</p>
           </div>
@@ -203,16 +203,16 @@ const resources: Resource[] = [
 
     {/* Resources */}
     <section class="flex flex-col gap-6">
-      <div class="border-b border-white/10 pb-4">
-        <h2 class="text-2xl font-bold text-white">Resources & Support</h2>
+      <div class="border-b border-border pb-4">
+        <h2 class="text-2xl text-foreground">Resources & Support</h2>
         <p class="text-muted-foreground mt-1">
           If you or someone you know is struggling with gambling, help is available.
         </p>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         {resources.map((resource) => (
-          <div class="rounded-2xl border border-white/5 bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
-            <h3 class="text-lg font-semibold text-white">{resource.name}</h3>
+          <div class="rounded-2xl border border-border bg-card/50 backdrop-blur-xl p-6 flex flex-col gap-3">
+            <h3 class="text-lg font-semibold text-foreground">{resource.name}</h3>
             <p class="text-muted-foreground text-sm">{resource.description}</p>
             <div class="flex flex-col gap-1 mt-1">
               <span class="text-sm font-medium text-primary">{resource.phone}</span>

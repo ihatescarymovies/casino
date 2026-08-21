@@ -25,35 +25,35 @@ const isExpired = promo ? isPromotionExpired(promo.expiresAt) : false;
     {promo ? (
       <>
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <a href="/promotions" class="hover:text-white transition-colors">Promotions</a>
+          <a href="/promotions" class="hover:text-foreground transition-colors">Promotions</a>
           <span>/</span>
-          <span class="text-white font-medium">{promo.title}</span>
+          <span class="text-foreground font-medium">{promo.title}</span>
         </div>
 
-        <div class="relative aspect-[21/9] w-full rounded-2xl overflow-hidden bg-card border border-white/10 group">
+        <div class="relative aspect-[21/9] w-full rounded-2xl overflow-hidden bg-card border border-border group">
           {promo.imageUrl ? (
             <img src={promo.imageUrl} alt={promo.title} class="w-full h-full object-cover" />
           ) : (
             <div class="w-full h-full bg-gradient-to-br from-card to-background flex items-center justify-center">
-              <span class="text-6xl font-bold text-white/5 uppercase tracking-widest">{promo.type}</span>
+              <span class="text-6xl font-bold text-foreground/5 uppercase tracking-widest">{promo.type}</span>
             </div>
           )}
           <div class="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
 
           <div class="absolute bottom-0 left-0 w-full p-8 md:p-12">
             <span class="inline-flex items-center rounded-full bg-primary/20 text-primary border border-primary/30 mb-4 px-3 py-1 font-bold tracking-wider">{promo.type.toUpperCase()}</span>
-            <h1 class="text-4xl md:text-6xl font-bold text-white mb-2 leading-tight">{promo.title}</h1>
-            <p class="text-3xl font-black text-primary drop-shadow-[0_0_10px_rgba(234,179,8,0.5)]">{promo.bonusAmount}</p>
+            <h1 class="text-4xl md:text-6xl text-foreground mb-2 leading-tight">{promo.title}</h1>
+            <p class="text-3xl font-black text-primary drop-amber-glow-sm">{promo.bonusAmount}</p>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mt-4">
           <div class="md:col-span-2 flex flex-col gap-8">
             <div class="prose prose-invert max-w-none">
-              <h2 class="text-2xl font-bold text-white mb-4">Offer Details</h2>
+              <h2 class="text-2xl text-foreground mb-4">Offer Details</h2>
               <p class="text-lg text-muted-foreground leading-relaxed mb-6">{promo.description}</p>
 
-              <h3 class="text-xl font-bold text-white mb-4">How to Claim</h3>
+              <h3 class="text-xl text-foreground mb-4">How to Claim</h3>
               <ol class="space-y-2 text-muted-foreground ml-4 list-decimal marker:text-primary marker:font-bold">
                 <li>Log in to your Charter &amp; Oak account.</li>
                 <li>Opt-in to this promotion via the cashier page.</li>
@@ -64,20 +64,20 @@ const isExpired = promo ? isPromotionExpired(promo.expiresAt) : false;
           </div>
 
           <div class="md:col-span-1">
-            <div class="bg-card border border-white/5 rounded-xl p-6 sticky top-24 flex flex-col gap-6">
+            <div class="bg-card border border-border rounded-xl p-6 sticky top-24 flex flex-col gap-6">
               <button
                 type="button"
-                class="w-full btn btn-primary text-lg h-14 shadow-[0_0_20px_rgba(234,179,8,0.4)]"
+                class="w-full btn btn-primary text-lg h-14 amber-glow-sm"
                 disabled={isExpired}
               >
                 {isExpired ? "Offer Expired" : "Claim Offer"}
               </button>
 
-              <div class="space-y-4 pt-4 border-t border-white/5">
+              <div class="space-y-4 pt-4 border-t border-border">
                 {promo.wagerRequirement && (
                   <div>
                     <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Wagering Requirement</span>
-                    <span class="block text-lg font-bold text-white">{promo.wagerRequirement}x</span>
+                    <span class="block text-lg font-bold text-foreground">{promo.wagerRequirement}x</span>
                   </div>
                 )}
 
@@ -89,7 +89,7 @@ const isExpired = promo ? isPromotionExpired(promo.expiresAt) : false;
                 </div>
               </div>
 
-              <div class="text-xs text-muted-foreground pt-4 border-t border-white/5">
+              <div class="text-xs text-muted-foreground pt-4 border-t border-border">
                 <p>Terms and conditions apply. Must be 21+ and physically present in OH. Gambling problem? Call 1-800-589-9966.</p>
               </div>
             </div>
@@ -98,7 +98,7 @@ const isExpired = promo ? isPromotionExpired(promo.expiresAt) : false;
       </>
     ) : (
       <div class="text-center py-32 flex flex-col items-center justify-center">
-        <h2 class="text-2xl font-bold text-white mb-4">Promotion Not Found</h2>
+        <h2 class="text-2xl text-foreground mb-4">Promotion Not Found</h2>
         <p class="text-muted-foreground mb-8">This offer may have expired or doesn't exist.</p>
         <a href="/promotions" class="btn btn-primary">View All Promotions</a>
       </div>

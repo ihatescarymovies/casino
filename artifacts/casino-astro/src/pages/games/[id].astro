@@ -71,27 +71,27 @@ const isDemo = Astro.url.searchParams.get("mode") === "demo";
         )}
 
         <div class="flex items-center gap-2 text-sm text-muted-foreground">
-          <a href="/games" class="hover:text-white transition-colors">Games</a>
+          <a href="/games" class="hover:text-foreground transition-colors">Games</a>
           <span>/</span>
           <span class="capitalize">{game.category}</span>
           <span>/</span>
-          <span class="text-white font-medium">{game.name}</span>
+          <span class="text-foreground font-medium">{game.name}</span>
         </div>
 
         <div class="flex flex-col lg:flex-row gap-12">
           <div class="lg:w-2/3 flex flex-col gap-6">
             {GameRenderer ? (
-              <div class="bg-black rounded-2xl overflow-hidden border border-white/10">
+              <div class="bg-black rounded-2xl overflow-hidden border border-border">
                 <IslandErrorBoundary client:load>
                   <GameRenderer client:load demo={isDemo} />
                 </IslandErrorBoundary>
               </div>
             ) : (
-              <div class="relative aspect-[16/9] bg-black rounded-2xl overflow-hidden border border-white/10 flex items-center justify-center">
+              <div class="relative aspect-[16/9] bg-black rounded-2xl overflow-hidden border border-border flex items-center justify-center">
                 <img src={image} alt={game.name} class="absolute inset-0 w-full h-full object-cover opacity-40 blur-[2px]" loading="lazy" decoding="async" />
                 <div class="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
                 <div class="relative z-10 text-center p-6">
-                  <h2 class="text-2xl font-bold text-white mb-2">{game.name}</h2>
+                  <h2 class="text-2xl text-foreground mb-2">{game.name}</h2>
                   <p class="text-muted-foreground">This game type is not yet available.</p>
                 </div>
               </div>
@@ -100,7 +100,7 @@ const isDemo = Astro.url.searchParams.get("mode") === "demo";
             <FairnessExplorer client:load gameType={game.category} />
 
             <div class="prose prose-invert max-w-none">
-              <h3 class="text-xl font-bold text-white mb-4">About {game.name}</h3>
+              <h3 class="text-xl text-foreground mb-4">About {game.name}</h3>
               <p class="text-muted-foreground leading-relaxed">
                 {game.description || `Experience the thrill of ${game.name}, a premium ${game.category} game by ${game.provider}. Featuring stunning graphics, smooth gameplay, and exciting mechanics designed for high rollers.`}
               </p>
@@ -108,52 +108,52 @@ const isDemo = Astro.url.searchParams.get("mode") === "demo";
           </div>
 
           <aside class="lg:w-1/3 flex flex-col gap-6">
-            <div class="bg-card border border-white/5 rounded-2xl p-6 flex flex-col gap-6">
+            <div class="bg-card border border-border rounded-2xl p-6 flex flex-col gap-6">
               <div>
                 <div class="flex flex-wrap gap-2 mb-4">
                   {game.isHot && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-destructive text-destructive-foreground shadow-[0_0_10px_rgba(220,38,38,0.8)] border-none">HOT</span>}
-                  {game.isNew && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-blue-500 text-white shadow-[0_0_10px_rgba(59,130,246,0.8)] border-none">NEW</span>}
-                  {game.isFeatured && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-primary text-primary-foreground shadow-[0_0_10px_rgba(234,179,8,0.8)] border-none">FEATURED</span>}
-                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border border-white/10 uppercase tracking-wider text-muted-foreground">{game.category}</span>
+                  {game.isNew && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-primary/90 text-primary-foreground border-none">NEW</span>}
+                  {game.isFeatured && <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold bg-primary text-primary-foreground amber-glow-sm border-none">FEATURED</span>}
+                  <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold border border-border uppercase tracking-wider text-muted-foreground">{game.category}</span>
                 </div>
 
-                <h1 class="text-4xl font-black text-white tracking-tight mb-2">{game.name}</h1>
+                <h1 class="text-4xl text-foreground tracking-tight mb-2">{game.name}</h1>
                 <p class="text-lg text-muted-foreground">by {game.provider}</p>
               </div>
 
               {game.jackpotAmount && (
                 <div class="bg-black/50 border border-primary/30 rounded-xl p-4 text-center">
                   <span class="block text-xs font-bold text-primary uppercase tracking-widest mb-1">Current Jackpot</span>
-                  <span class="block text-3xl font-black text-white drop-shadow-[0_0_8px_rgba(255,255,255,0.5)]">
+                  <span class="block text-3xl font-black text-foreground ">
                     {formatCurrency(game.jackpotAmount)}
                   </span>
                 </div>
               )}
 
               <div class="grid grid-cols-2 gap-4">
-                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                <div class="bg-black/20 border border-border rounded-lg p-4">
                   <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">RTP</span>
-                  <span class="block text-xl font-bold text-white">{game.rtp}%</span>
+                  <span class="block text-xl font-bold text-foreground">{game.rtp}%</span>
                 </div>
-                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                <div class="bg-black/20 border border-border rounded-lg p-4">
                   <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Volatility</span>
-                  <span class="block text-xl font-bold text-white">High</span>
+                  <span class="block text-xl font-bold text-foreground">High</span>
                 </div>
-                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                <div class="bg-black/20 border border-border rounded-lg p-4">
                   <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Min Bet</span>
-                  <span class="block text-xl font-bold text-white">{game.minBet ? formatCurrency(game.minBet) : '$1'}</span>
+                  <span class="block text-xl font-bold text-foreground">{game.minBet ? formatCurrency(game.minBet) : '$1'}</span>
                 </div>
-                <div class="bg-black/20 border border-white/5 rounded-lg p-4">
+                <div class="bg-black/20 border border-border rounded-lg p-4">
                   <span class="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Max Bet</span>
-                  <span class="block text-xl font-bold text-white">{game.maxBet ? formatCurrency(game.maxBet) : '$5,000'}</span>
+                  <span class="block text-xl font-bold text-foreground">{game.maxBet ? formatCurrency(game.maxBet) : '$5,000'}</span>
                 </div>
               </div>
 
-              <div class="flex flex-col gap-3 pt-4 border-t border-white/5">
-                <a href={`/games/${game.id}?mode=real`} class="btn btn-primary text-center text-lg h-14 shadow-[0_0_30px_rgba(234,179,8,0.5)]">
+              <div class="flex flex-col gap-3 pt-4 border-t border-border">
+                <a href={`/games/${game.id}?mode=real`} class="btn btn-primary text-center text-lg h-14 amber-glow-sm">
                   PLAY FOR REAL
                 </a>
-                <a href={`/games/${game.id}?mode=demo`} class="btn btn-ghost text-center text-muted-foreground hover:text-white">
+                <a href={`/games/${game.id}?mode=demo`} class="btn btn-ghost text-center text-muted-foreground hover:text-foreground">
                   TRY DEMO
                 </a>
               </div>
@@ -162,8 +162,8 @@ const isDemo = Astro.url.searchParams.get("mode") === "demo";
         </div>
 
         {relatedGames && relatedGames.length > 0 && (
-          <section class="pt-12 border-t border-white/10 mt-12">
-            <h2 class="text-2xl font-bold text-white mb-8">More {game.category} Games</h2>
+          <section class="pt-12 border-t border-border mt-12">
+            <h2 class="text-2xl text-foreground mb-8">More {game.category} Games</h2>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedGames.filter(g => g.id !== game.id).slice(0, 4).map(relatedGame => (
                 <GameCard
@@ -183,7 +183,7 @@ const isDemo = Astro.url.searchParams.get("mode") === "demo";
       </>
     ) : (
       <div class="text-center py-32 flex flex-col items-center justify-center">
-        <h2 class="text-2xl font-bold text-white mb-4">Game Not Found</h2>
+        <h2 class="text-2xl text-foreground mb-4">Game Not Found</h2>
         <p class="text-muted-foreground mb-8">The game you're looking for doesn't exist or is currently unavailable.</p>
         <a href="/games" class="btn btn-primary">Back to Games</a>
       </div>

@@ -1,80 +1,96 @@
+@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 /*
- ---break---
- */
+  ---break---
+*/
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Charter & Oak Casino — Design System Tokens
- * Phase 3: Full design system with glassmorphism, micro-interactions, display font.
+ * Charter & Oak Casino — "The Gaming Table" Design System
+ * The casino IS the table: green felt, aged brass, amber lamplight,
+ * the dark room around the table, and the weight of physical chips.
  */
 
 @theme {
-  /* Brand colors — gold accent on dark casino theme */
-  --color-primary: oklch(0.75 0.16 85);
-  --color-primary-foreground: oklch(0.15 0.04 85);
-  --color-primary-hover: oklch(0.68 0.16 85);
-  --color-primary-pressed: oklch(0.58 0.16 85);
-  --color-accent-dark: oklch(0.45 0.12 50);
+  /* Brand — aged brass, not bright gold */
+  --color-primary: oklch(0.72 0.13 75);
+  --color-primary-foreground: oklch(0.12 0.01 75);
+  --color-primary-hover: oklch(0.66 0.13 75);
+  --color-primary-pressed: oklch(0.56 0.11 75);
 
-  /* Surface */
-  --color-background: oklch(0.12 0.01 260);
-  --color-foreground: oklch(0.95 0.01 260);
-  --color-card: oklch(0.16 0.01 260);
-  --color-card-foreground: oklch(0.95 0.01 260);
+  /* The room — warm near-black, not cool blue-black */
+  --color-background: oklch(0.07 0.006 145);
+  --color-foreground: oklch(0.92 0.01 85);
+
+  /* Felt surface — deep forest green, aged */
+  --color-felt: oklch(0.15 0.025 150);
+  --color-felt-foreground: oklch(0.90 0.01 85);
+  --color-felt-light: oklch(0.19 0.03 150);
+
+  /* Card surface — dark, warm, adjacent to felt */
+  --color-card: oklch(0.11 0.005 145);
+  --color-card-foreground: oklch(0.90 0.01 85);
+
+  /* Brass rail — dark brass for borders and dividers */
+  --color-brass: oklch(0.52 0.08 75);
+  --color-brass-light: oklch(0.65 0.10 75);
+
+  /* Amber lamplight — warm, like a table lamp in a dark room */
+  --color-amber: oklch(0.60 0.10 65);
+  --color-amber-glow: oklch(0.55 0.12 60);
 
   /* Muted */
-  --color-muted: oklch(0.22 0.01 260);
-  --color-muted-foreground: oklch(0.65 0.01 260);
+  --color-muted: oklch(0.16 0.005 145);
+  --color-muted-foreground: oklch(0.58 0.01 80);
 
   /* Borders & inputs */
-  --color-border: oklch(0.28 0.01 260);
-  --color-input: oklch(0.28 0.01 260);
-  --color-ring: oklch(0.75 0.16 85);
+  --color-border: oklch(0.22 0.01 75);
+  --color-input: oklch(0.22 0.01 75);
+  --color-ring: oklch(0.72 0.13 75);
 
-  /* Destructive */
-  --color-destructive: oklch(0.55 0.22 25);
-  --color-destructive-foreground: oklch(0.98 0.01 260);
+  /* Destructive — for 21+ warning */
+  --color-destructive: oklch(0.52 0.19 25);
+  --color-destructive-foreground: oklch(0.95 0.01 85);
 
   /* Accent */
-  --color-accent: oklch(0.22 0.01 260);
-  --color-accent-foreground: oklch(0.95 0.01 260);
+  --color-accent: oklch(0.16 0.005 145);
+  --color-accent-foreground: oklch(0.92 0.01 85);
 
   /* Popover */
-  --color-popover: oklch(0.14 0.01 260);
-  --color-popover-foreground: oklch(0.95 0.01 260);
+  --color-popover: oklch(0.09 0.005 145);
+  --color-popover-foreground: oklch(0.92 0.01 85);
 
   /* Sidebar */
-  --color-sidebar: oklch(0.14 0.01 260);
-  --color-sidebar-foreground: oklch(0.95 0.01 260);
-  --color-sidebar-primary: oklch(0.75 0.16 85);
-  --color-sidebar-primary-foreground: oklch(0.15 0.04 85);
-  --color-sidebar-accent: oklch(0.22 0.01 260);
-  --color-sidebar-accent-foreground: oklch(0.95 0.01 260);
-  --color-sidebar-border: oklch(0.28 0.01 260);
-  --color-sidebar-ring: oklch(0.75 0.16 85);
+  --color-sidebar: oklch(0.09 0.005 145);
+  --color-sidebar-foreground: oklch(0.92 0.01 85);
+  --color-sidebar-primary: oklch(0.72 0.13 75);
+  --color-sidebar-primary-foreground: oklch(0.12 0.01 75);
+  --color-sidebar-accent: oklch(0.16 0.005 145);
+  --color-sidebar-accent-foreground: oklch(0.92 0.01 85);
+  --color-sidebar-border: oklch(0.22 0.01 75);
+  --color-sidebar-ring: oklch(0.72 0.13 75);
 
   /* Chart colors */
-  --color-chart-1: oklch(0.75 0.16 85);
-  --color-chart-2: oklch(0.65 0.18 280);
-  --color-chart-3: oklch(0.7 0.14 160);
-  --color-chart-4: oklch(0.65 0.2 25);
-  --color-chart-5: oklch(0.7 0.12 200);
+  --color-chart-1: oklch(0.72 0.13 75);
+  --color-chart-2: oklch(0.60 0.10 150);
+  --color-chart-3: oklch(0.60 0.10 65);
+  --color-chart-4: oklch(0.55 0.19 25);
+  --color-chart-5: oklch(0.65 0.12 200);
 
   /* Secondary */
-  --color-secondary: oklch(0.22 0.01 260);
-  --color-secondary-foreground: oklch(0.95 0.01 260);
+  --color-secondary: oklch(0.16 0.005 145);
+  --color-secondary-foreground: oklch(0.92 0.01 85);
 
   /* Success */
-  --color-success: oklch(0.65 0.18 145);
-  --color-success-foreground: oklch(0.12 0.02 145);
+  --color-success: oklch(0.60 0.15 145);
+  --color-success-foreground: oklch(0.10 0.02 145);
 
   /* Warning */
-  --color-warning: oklch(0.75 0.15 85);
-  --color-warning-foreground: oklch(0.15 0.04 85);
+  --color-warning: oklch(0.72 0.13 75);
+  --color-warning-foreground: oklch(0.12 0.01 75);
 
   /* Radius */
   --radius-sm: 0.25rem;
@@ -82,84 +98,86 @@
   --radius-lg: 0.5rem;
   --radius-xl: 0.75rem;
 
-  /* Typography */
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Playfair Display", Georgia, serif;
+  /* Typography — Caslon for colonial charter gravitas, Geist for modern body */
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Libre Caslon Display", Georgia, serif;
 
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5);
+  /* Shadows — warm, with amber undertone, carrying offset and soft blur */
+  --shadow-sm: 0 1px 3px 0 rgb(60 40 10 / 0.3);
+  --shadow-md: 0 4px 8px -2px rgb(60 40 10 / 0.4);
+  --shadow-lg: 0 12px 24px -6px rgb(60 40 10 / 0.5);
 }
 
 /* ============================================
-   DARK MODE (Default for Charter & Oak Casino)
+   DARK MODE (Default — the dark room around the table)
    ============================================ */
 .dark {
-  --color-background: oklch(0.08 0.01 260);
-  --color-foreground: oklch(0.95 0.01 260);
-  --color-card: oklch(0.12 0.01 260);
-  --color-card-foreground: oklch(0.95 0.01 260);
-  --color-muted: oklch(0.18 0.01 260);
-  --color-muted-foreground: oklch(0.65 0.01 260);
-  --color-border: oklch(0.22 0.01 260);
-  --color-input: oklch(0.22 0.01 260);
-  --color-ring: oklch(0.75 0.16 85);
-  --color-primary: oklch(0.75 0.16 85);
-  --color-primary-foreground: oklch(0.15 0.04 85);
-  --color-primary-hover: oklch(0.68 0.16 85);
-  --color-primary-pressed: oklch(0.58 0.16 85);
-  --color-secondary: oklch(0.18 0.01 260);
-  --color-secondary-foreground: oklch(0.95 0.01 260);
-  --color-accent: oklch(0.18 0.01 260);
-  --color-accent-foreground: oklch(0.95 0.01 260);
-  --color-destructive: oklch(0.55 0.22 25);
-  --color-destructive-foreground: oklch(0.98 0.01 260);
-  --color-success: oklch(0.65 0.18 145);
-  --color-success-foreground: oklch(0.12 0.02 145);
-  --color-warning: oklch(0.75 0.15 85);
-  --color-warning-foreground: oklch(0.15 0.04 85);
-  --color-popover: oklch(0.1 0.01 260);
-  --color-popover-foreground: oklch(0.95 0.01 260);
-  --color-sidebar: oklch(0.1 0.01 260);
-  --color-sidebar-foreground: oklch(0.95 0.01 260);
-  --color-sidebar-primary: oklch(0.75 0.16 85);
-  --color-sidebar-primary-foreground: oklch(0.15 0.04 85);
-  --color-sidebar-accent: oklch(0.18 0.01 260);
-  --color-sidebar-accent-foreground: oklch(0.95 0.01 260);
-  --color-sidebar-border: oklch(0.22 0.01 260);
-  --color-sidebar-ring: oklch(0.75 0.16 85);
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --color-background: oklch(0.07 0.006 145);
+  --color-foreground: oklch(0.92 0.01 85);
+  --color-card: oklch(0.11 0.005 145);
+  --color-card-foreground: oklch(0.90 0.01 85);
+  --color-muted: oklch(0.15 0.005 145);
+  --color-muted-foreground: oklch(0.55 0.01 80);
+  --color-border: oklch(0.20 0.01 75);
+  --color-input: oklch(0.20 0.01 75);
+  --color-ring: oklch(0.72 0.13 75);
+  --color-primary: oklch(0.72 0.13 75);
+  --color-primary-foreground: oklch(0.12 0.01 75);
+  --color-primary-hover: oklch(0.66 0.13 75);
+  --color-primary-pressed: oklch(0.56 0.11 75);
+  --color-secondary: oklch(0.15 0.005 145);
+  --color-secondary-foreground: oklch(0.92 0.01 85);
+  --color-accent: oklch(0.15 0.005 145);
+  --color-accent-foreground: oklch(0.92 0.01 85);
+  --color-destructive: oklch(0.52 0.19 25);
+  --color-destructive-foreground: oklch(0.95 0.01 85);
+  --color-success: oklch(0.60 0.15 145);
+  --color-success-foreground: oklch(0.10 0.02 145);
+  --color-warning: oklch(0.72 0.13 75);
+  --color-warning-foreground: oklch(0.12 0.01 75);
+  --color-popover: oklch(0.08 0.005 145);
+  --color-popover-foreground: oklch(0.92 0.01 85);
+  --color-sidebar: oklch(0.08 0.005 145);
+  --color-sidebar-foreground: oklch(0.92 0.01 85);
+  --color-sidebar-primary: oklch(0.72 0.13 75);
+  --color-sidebar-primary-foreground: oklch(0.12 0.01 75);
+  --color-sidebar-accent: oklch(0.15 0.005 145);
+  --color-sidebar-accent-foreground: oklch(0.92 0.01 85);
+  --color-sidebar-border: oklch(0.20 0.01 75);
+  --color-sidebar-ring: oklch(0.72 0.13 75);
+
+  /* shadcn/ui compatibility */
+  --background: oklch(0.07 0.006 145);
+  --foreground: oklch(0.92 0.01 85);
+  --card: oklch(0.11 0.005 145);
+  --card-foreground: oklch(0.90 0.01 85);
+  --popover: oklch(0.08 0.005 145);
+  --popover-foreground: oklch(0.92 0.01 85);
+  --primary: oklch(0.72 0.13 75);
+  --primary-foreground: oklch(0.12 0.01 75);
+  --secondary: oklch(0.15 0.005 145);
+  --secondary-foreground: oklch(0.92 0.01 85);
+  --muted: oklch(0.15 0.005 145);
+  --muted-foreground: oklch(0.55 0.01 80);
+  --accent: oklch(0.15 0.005 145);
+  --accent-foreground: oklch(0.92 0.01 85);
+  --destructive: oklch(0.52 0.19 25);
+  --border: oklch(0.20 0.01 75);
+  --input: oklch(0.20 0.01 75);
+  --ring: oklch(0.72 0.13 75);
+  --chart-1: oklch(0.72 0.13 75);
+  --chart-2: oklch(0.60 0.10 150);
+  --chart-3: oklch(0.60 0.10 65);
+  --chart-4: oklch(0.55 0.19 25);
+  --chart-5: oklch(0.65 0.12 200);
+  --sidebar: oklch(0.08 0.005 145);
+  --sidebar-foreground: oklch(0.92 0.01 85);
+  --sidebar-primary: oklch(0.72 0.13 75);
+  --sidebar-primary-foreground: oklch(0.12 0.01 75);
+  --sidebar-accent: oklch(0.15 0.005 145);
+  --sidebar-accent-foreground: oklch(0.92 0.01 85);
+  --sidebar-border: oklch(0.20 0.01 75);
+  --sidebar-ring: oklch(0.72 0.13 75);
 }
 
 /* ============================================
@@ -179,6 +197,58 @@ body {
 }
 
 /* ============================================
+   BROWSER SURFACES
+   Theme the parts we didn't draw — this is the cheapest
+   signal that a page was built rather than assembled.
+   ============================================ */
+::selection {
+  background: oklch(0.55 0.12 65 / 0.35);
+  color: oklch(0.95 0.01 85);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: oklch(0.28 0.02 75);
+  border-radius: 4px;
+  border: 2px solid var(--color-background);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.40 0.05 75);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Caret color — amber lamplight */
+input,
+textarea,
+[contenteditable] {
+  caret-color: var(--color-amber);
+}
+
+/* Underline offset for links */
+a {
+  text-underline-offset: 3px;
+}
+
+/* Tabular numerals in data contexts */
+table,
+.data-display {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
    TYPOGRAPHY
    ============================================ */
 h1,
@@ -188,36 +258,30 @@ h4,
 h5,
 h6 {
   font-family: var(--font-display);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+  font-weight: 400;
 }
 
 h1 {
-  font-size: 3rem;
-  font-weight: 900;
+  font-size: 3.5rem;
 }
 h2 {
-  font-size: 2.25rem;
-  font-weight: 700;
+  font-size: 2.5rem;
 }
 h3 {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.75rem;
 }
 h4 {
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 1.375rem;
 }
 h5 {
   font-size: 1.125rem;
-  font-weight: 700;
 }
 h6 {
   font-size: 1rem;
-  font-weight: 700;
 }
 
-/* Body typography override for non-headings */
 p,
 span,
 a,
@@ -227,15 +291,7 @@ th {
   font-family: var(--font-sans);
 }
 
-/* ============================================
-   FOCUS-VISIBLE ACCESSIBILITY
-   ============================================ */
-*:focus-visible {
-  outline: 2px solid var(--color-ring);
-  outline-offset: 2px;
-}
-
-/* Skip-link for keyboard users */
+/* Skip-link */
 .skip-link {
   position: absolute;
   top: -100%;
@@ -254,53 +310,103 @@ th {
   top: 0;
 }
 
-/* ============================================
-   GLASSMORPHISM
-   ============================================ */
-.glass {
-  backdrop-filter: blur(16px) saturate(180%);
-  -webkit-backdrop-filter: blur(16px) saturate(180%);
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.glass-strong {
-  backdrop-filter: blur(24px) saturate(200%);
-  -webkit-backdrop-filter: blur(24px) saturate(200%);
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+.caslon {
+  font-family: var(--font-display);
 }
 
 /* ============================================
-   MICRO-INTERACTIONS (KEYFRAMES)
+   FELT SURFACE
+   The gaming table itself — deep green with
+   a subtle directional grain texture.
    ============================================ */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
+.felt-surface {
+  background-color: var(--color-felt);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0,
+      transparent 1px,
+      oklch(0.13 0.02 150 / 0.4) 1px,
+      oklch(0.13 0.02 150 / 0.4) 2px
+    );
+  border: 1px solid oklch(0.20 0.02 75);
 }
 
-@keyframes pulse-glow {
+.felt-surface-light {
+  background-color: var(--color-felt-light);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      transparent 0,
+      transparent 1px,
+      oklch(0.17 0.02 150 / 0.3) 1px,
+      oklch(0.17 0.02 150 / 0.3) 2px
+    );
+}
+
+/* ============================================
+   BRASS RAIL
+   The edge of the gaming table — a thin brass
+   line with warm shadow.
+   ============================================ */
+.brass-rail {
+  border-bottom: 1px solid oklch(0.45 0.06 75);
+  box-shadow:
+    0 1px 0 oklch(0.55 0.08 75),
+    0 2px 4px oklch(40 30 10 / 0.3);
+}
+
+.brass-rail-top {
+  border-top: 1px solid oklch(0.45 0.06 75);
+  box-shadow:
+    0 -1px 0 oklch(0.55 0.08 75),
+    0 -2px 4px oklch(40 30 10 / 0.3);
+}
+
+/* ============================================
+   AMBER LAMPLIGHT
+   The spotlight from a table lamp — warm,
+   localized, like a pool of light on the felt.
+   ============================================ */
+.amber-lamp {
+  background: radial-gradient(
+    ellipse 60% 50% at center,
+    oklch(0.50 0.10 65 / 0.15) 0%,
+    transparent 70%
+  );
+}
+
+/* ============================================
+   DATA DISPLAY
+   Seven-segment aesthetic for jackpot, stats,
+   and numeric readouts — amber on dark with
+   tabular numerals and subtle LED glow.
+   ============================================ */
+.data-display {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: oklch(0.75 0.12 65);
+  text-shadow:
+    0 0 8px oklch(0.55 0.12 65 / 0.4),
+    0 0 2px oklch(0.60 0.12 65 / 0.3);
+}
+
+/* ============================================
+   MICRO-INTERACTIONS
+   ============================================ */
+@keyframes amber-pulse {
   0%,
   100% {
-    box-shadow: 0 0 8px rgba(217, 169, 58, 0.3);
+    text-shadow:
+      0 0 8px oklch(0.55 0.12 65 / 0.4),
+      0 0 2px oklch(0.60 0.12 65 / 0.3);
   }
   50% {
-    box-shadow: 0 0 20px rgba(217, 169, 58, 0.6);
-  }
-}
-
-@keyframes slot-spin {
-  0% {
-    transform: translateY(0);
-  }
-  100% {
-    transform: translateY(-100%);
+    text-shadow:
+      0 0 16px oklch(0.55 0.12 65 / 0.6),
+      0 0 4px oklch(0.65 0.13 65 / 0.5);
   }
 }
 
@@ -313,39 +419,33 @@ th {
   }
 }
 
-/* Utility classes for animations */
-.animate-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 50%,
-    transparent 100%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite linear;
+@keyframes lamp-flicker {
+  0%, 100% { opacity: 1; }
+  98% { opacity: 1; }
+  99% { opacity: 0.85; }
 }
 
-.animate-pulse-glow {
-  animation: pulse-glow 2s infinite ease-in-out;
-}
-
-.animate-slot-spin {
-  animation: slot-spin 0.5s linear infinite;
+.animate-amber-pulse {
+  animation: amber-pulse 3s infinite ease-in-out;
 }
 
 .animate-marquee {
-  animation: marquee 20s linear infinite;
+  animation: marquee 25s linear infinite;
+}
+
+.animate-lamp-flicker {
+  animation: lamp-flicker 8s infinite ease-in-out;
 }
 
 /* ============================================
-   BUTTONS
+   BUTTONS — brass, not glass
    ============================================ */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.625rem 1.25rem;
   font-family: var(--font-sans);
   font-weight: 600;
   font-size: 0.875rem;
@@ -355,6 +455,7 @@ th {
   cursor: pointer;
   transition: all 150ms ease;
   text-decoration: none;
+  letter-spacing: 0.01em;
 }
 
 .btn:disabled,
@@ -363,36 +464,50 @@ th {
   cursor: not-allowed;
 }
 
+/* Brass button — aged gold with dark text, warm shadow */
 .btn-primary {
   background-color: var(--color-primary);
   color: var(--color-primary-foreground);
+  box-shadow:
+    0 2px 4px oklch(40 30 10 / 0.4),
+    inset 0 1px 0 oklch(0.80 0.10 75 / 0.3);
 }
 
 .btn-primary:hover:not(:disabled) {
   background-color: var(--color-primary-hover);
+  box-shadow:
+    0 3px 8px oklch(40 30 10 / 0.5),
+    inset 0 1px 0 oklch(0.80 0.10 75 / 0.4);
 }
 
 .btn-primary:active:not(:disabled) {
   background-color: var(--color-primary-pressed);
+  box-shadow:
+    0 1px 2px oklch(40 30 10 / 0.3),
+    inset 0 1px 0 oklch(0.70 0.10 75 / 0.2);
 }
 
+/* Outlined brass — transparent with brass border */
 .btn-secondary {
-  background-color: var(--color-secondary);
-  color: var(--color-secondary-foreground);
-  border: 1px solid var(--color-border);
+  background-color: transparent;
+  color: var(--color-primary);
+  border: 1px solid oklch(0.45 0.08 75);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--color-muted);
+  background-color: oklch(0.15 0.02 75 / 0.3);
+  border-color: oklch(0.55 0.10 75);
+  color: oklch(0.80 0.12 75);
 }
 
+/* Ghost — no background, for nav */
 .btn-ghost {
   background-color: transparent;
   color: var(--color-foreground);
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background-color: var(--color-accent);
+  background-color: oklch(0.15 0.01 75 / 0.15);
 }
 
 .btn-destructive {
@@ -401,26 +516,44 @@ th {
 }
 
 .btn-destructive:hover:not(:disabled) {
-  filter: brightness(1.1);
+  filter: brightness(1.15);
 }
 
 /* ============================================
-   CARDS
+   CARDS — the gaming table surface
    ============================================ */
 .casino-card {
   background-color: var(--color-card);
-  border: 1px solid var(--color-border);
+  border: 1px solid oklch(0.20 0.01 75);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   transition:
     box-shadow 200ms ease,
     border-color 200ms ease;
   overflow: hidden;
+  position: relative;
+}
+
+.casino-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    oklch(0.55 0.08 75 / 0.4) 50%,
+    transparent 100%
+  );
 }
 
 .casino-card:hover {
-  box-shadow: var(--shadow-lg);
-  border-color: var(--color-primary);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px oklch(0.50 0.08 75 / 0.3);
+  border-color: oklch(0.35 0.05 75);
 }
 
 .casino-card:focus-within {
@@ -428,29 +561,36 @@ th {
   outline-offset: 2px;
 }
 
-/* Interactive card links */
 a:focus-visible > .casino-card {
   border-color: var(--color-primary);
 }
 
 /* ============================================
-   ADDITIONAL UTILITIES
+   FOCUSED AMBIENT GLOW
+   Used sparingly for hero sections — the pool
+   of lamplight, not a neon halo.
    ============================================ */
-.text-gradient-gold {
-  background: linear-gradient(
-    135deg,
-    var(--color-primary) 0%,
-    oklch(0.85 0.12 85) 100%
-  );
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+.amber-glow-sm {
+  box-shadow: 0 0 12px oklch(0.50 0.10 65 / 0.25);
 }
+
+.amber-glow-md {
+  box-shadow:
+    0 0 20px oklch(0.50 0.10 65 / 0.3),
+    0 4px 8px oklch(40 30 10 / 0.4);
+}
+
+.amber-glow-lg {
+  box-shadow:
+    0 0 32px oklch(0.50 0.10 65 / 0.35),
+    0 8px 16px oklch(40 30 10 / 0.5);
+}
+
 /*
- ---break---
- */
+  ---break---
+*/
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-display);
   --font-sans: "Geist Variable", sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -492,45 +632,45 @@ a:focus-visible > .casino-card {
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 /*
- ---break---
- */
+  ---break---
+*/
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
+  --background: oklch(0.07 0.006 145);
+  --foreground: oklch(0.92 0.01 85);
+  --card: oklch(0.11 0.005 145);
+  --card-foreground: oklch(0.90 0.01 85);
+  --popover: oklch(0.08 0.005 145);
+  --popover-foreground: oklch(0.92 0.01 85);
+  --primary: oklch(0.72 0.13 75);
+  --primary-foreground: oklch(0.12 0.01 75);
+  --secondary: oklch(0.15 0.005 145);
+  --secondary-foreground: oklch(0.92 0.01 85);
+  --muted: oklch(0.15 0.005 145);
+  --muted-foreground: oklch(0.55 0.01 80);
+  --accent: oklch(0.15 0.005 145);
+  --accent-foreground: oklch(0.92 0.01 85);
+  --destructive: oklch(0.52 0.19 25);
+  --border: oklch(0.20 0.01 75);
+  --input: oklch(0.20 0.01 75);
+  --ring: oklch(0.72 0.13 75);
+  --chart-1: oklch(0.72 0.13 75);
+  --chart-2: oklch(0.60 0.10 150);
+  --chart-3: oklch(0.60 0.10 65);
+  --chart-4: oklch(0.55 0.19 25);
+  --chart-5: oklch(0.65 0.12 200);
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: oklch(0.08 0.005 145);
+  --sidebar-foreground: oklch(0.92 0.01 85);
+  --sidebar-primary: oklch(0.72 0.13 75);
+  --sidebar-primary-foreground: oklch(0.12 0.01 75);
+  --sidebar-accent: oklch(0.15 0.005 145);
+  --sidebar-accent-foreground: oklch(0.92 0.01 85);
+  --sidebar-border: oklch(0.20 0.01 75);
+  --sidebar-ring: oklch(0.72 0.13 75);
 }
 /*
- ---break---
- */
+  ---break---
+*/
 @layer base {
   * {
     @apply border-border outline-ring/50;

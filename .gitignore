@@ -47,7 +47,11 @@ playwright/.cache
 .foresight/
 .jcode/
 .claude/
-.cursor/rules/nx-rules.mdc
+.impeccable/
+.playwright-mcp/
+.impeccable/**/review/
+artifacts/casino-astro/.impeccable/
+artifacts/casino-astro/PRODUCT.md
 .github/instructions/nx.instructions.md
 
 # ── Misc ────────────────────────────────────────────────────────────

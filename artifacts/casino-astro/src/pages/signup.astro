@@ -8,28 +8,29 @@ const returnTo = Astro.url.searchParams.get("returnTo") || "/";
   title="Sign Up — Charter & Oak"
   description="Create your Charter & Oak Casino account and start playing."
 >
-  <section
-    class="relative min-h-[80vh] flex flex-col items-center justify-center overflow-hidden"
-  >
-    <div
-      class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(220,38,38,0.12),transparent_70%)]"
-    />
-    <div class="container mx-auto px-4 z-10 flex flex-col items-center text-center">
-      <div
-        class="rounded-3xl border border-white/5 bg-card/50 backdrop-blur-xl p-8 md:p-12 max-w-md w-full flex flex-col gap-6"
-      >
-        <div class="flex flex-col gap-2">
-          <h1
-            class="text-3xl md:text-4xl font-bold text-white tracking-tight"
-          >
-            Join Charter & Oak
-          </h1>
-          <p class="text-muted-foreground">
-            Create your account and start playing premium casino games today.
+  <section class="relative min-h-[85vh] flex flex-col items-center justify-center overflow-hidden">
+    {/* Amber lamplight */}
+    <div class="absolute inset-0 amber-lamp"></div>
+    {/* Felt surface */}
+    <div class="absolute inset-0 felt-surface opacity-25"></div>
+
+    <div class="container mx-auto px-4 z-10 flex flex-col items-center">
+      <div class="w-full max-w-md flex flex-col gap-8 rounded-xl bg-card border border-border shadow-lg p-8 md:p-10">
+        {/* Brand mark */}
+        <div class="flex flex-col items-center gap-3">
+          <span class="text-xl caslon tracking-tight text-primary">Charter &amp; Oak</span>
+          <div class="h-px w-12 bg-primary/30"></div>
+        </div>
+
+        <div class="flex flex-col gap-2 text-center">
+          <h1 class="text-3xl text-foreground">Join the Table</h1>
+          <p class="text-muted-foreground text-sm">
+            Create your account and start playing today.
           </p>
         </div>
 
-        <div class="flex flex-col gap-3 text-left">
+        {/* Feature bullets — brass checkmarks */}
+        <div class="flex flex-col gap-3">
           {[
             "200+ premium slots and table games",
             "Live dealer tables with real croupiers",
@@ -37,20 +38,9 @@ const returnTo = Astro.url.searchParams.get("returnTo") || "/";
             "Secure deposits and instant withdrawals",
           ].map((feature) => (
             <div class="flex items-center gap-3">
-              <div
-                class="flex h-5 w-5 items-center justify-center rounded-full bg-primary/20 text-primary shrink-0"
-              >
-                <svg
-                  class="h-3 w-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="3"
-                    d="M5 13l4 4L19 7"></path>
+              <div class="flex h-5 w-5 items-center justify-center rounded-full bg-primary/15 text-primary shrink-0">
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
                 </svg>
               </div>
               <span class="text-sm text-muted-foreground">{feature}</span>
@@ -60,22 +50,16 @@ const returnTo = Astro.url.searchParams.get("returnTo") || "/";
 
         <a
           href={`/api/login?returnTo=${encodeURIComponent(returnTo)}`}
-          class="btn btn-primary w-full shadow-[0_0_15px_rgba(234,179,8,0.4)] text-lg py-3"
+          class="btn btn-primary w-full text-base py-3 amber-glow-sm"
         >
           Create Account
         </a>
 
-        <div class="flex items-center gap-3">
-          <div class="h-px flex-1 bg-white/10"></div>
-          <span class="text-sm text-muted-foreground">or</span>
-          <div class="h-px flex-1 bg-white/10"></div>
-        </div>
-
-        <p class="text-sm text-muted-foreground">
+        <p class="text-sm text-muted-foreground text-center">
           Already have an account?
           <a
             href={`/login?returnTo=${encodeURIComponent(returnTo)}`}
-            class="text-primary hover:underline">Log in</a
+            class="text-primary hover:underline ml-1">Log in</a
           >
         </p>
       </div>

@@ -45,13 +45,13 @@ export default function WinnersTicker({ winners }: WinnersTickerProps) {
           key={`${winner.playerName}-${i}`}
           className="flex items-center gap-2"
         >
-          <span className="text-white font-medium">{winner.playerName}</span>
+          <span className="text-foreground font-medium">{winner.playerName}</span>
           <span className="text-muted-foreground text-sm">won</span>
           <span className="text-primary font-bold">
             {formatCurrency(winner.winAmount)}
           </span>
           <span className="text-muted-foreground text-sm">on</span>
-          <span className="text-white font-medium">{winner.gameName}</span>
+          <span className="text-foreground font-medium">{winner.gameName}</span>
         </div>
       ))}
     </div>

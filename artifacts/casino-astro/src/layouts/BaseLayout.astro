@@ -10,7 +10,7 @@ interface Props {
 
 const {
   title = "Charter & Oak — Premium Online Casino",
-  description = "Experience world-class gaming at Charter & Oak Casino. Slots, table games, live dealers, and more.",
+  description = "Charter & Oak Casino — Ohio's premium online casino with slots, table games, live dealers, and progressive jackpots.",
   image = "/og-image.jpg",
 } = Astro.props;
 
@@ -45,6 +45,20 @@ import "@/styles/global.css"
     <meta name="twitter:description" content={description} />
   </head>
   <body>
+    <!--
+      THESIS: The casino IS the gaming table — green felt, aged brass rails, amber lamplight in a dark room.
+      This refuses the category default of dark backgrounds with neon glows and glassmorphic cards.
+      OWN-WORLD: Deep forest green felt, aged brass (oklch 0.72 0.13 75), warm near-black room (oklch 0.07 0.006 145),
+      amber lamplight (oklch 0.60 0.10 65), Libre Caslon Display headings, Geist Variable body, seven-segment data displays.
+      STORY: The visitor arrives at a dark room where a gaming table is lit. They see the jackpot as the table's ante,
+      the games as cards on the felt, and the action as the invitation to sit down.
+      FIRST VIEWPORT: A near-black room. The hero is the gaming table — felt-green surface with amber lamplight,
+      the progressive jackpot in seven-segment amber display at center, brass-rail border framing the section.
+      The "Play Now" button is brass, not a gold gradient. Game cards sit on the felt like dealt cards.
+      FORM: The gaming table — candidate 7 of 7, seed key 889f78ac.
+      FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict,
+      DESIGN.md, and every shipping raster carrying its provenance.
+    -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <SiteHeader currentPath={currentPath} user={user} isAuthenticated={isAuthenticated} />
     <main id="main-content" aria-label="Main content" class="flex-1 w-full flex flex-col">

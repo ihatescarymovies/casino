@@ -17,15 +17,15 @@ const winners = await apiFetch<Winner[]>("/api/winners?limit=50");
 <BaseLayout title="Hall of Winners — Charter & Oak" description="Real players. Real money. See the latest big wins at Charter & Oak Casino.">
   <main id="main-content" class="container mx-auto px-4 py-12 flex flex-col gap-12 max-w-5xl">
     <div class="text-center">
-      <h1 class="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">Hall of Winners</h1>
+      <h1 class="text-4xl md:text-5xl text-foreground mb-4 tracking-tight">Hall of Winners</h1>
       <p class="text-xl text-muted-foreground">Real players. Real money. Are you next?</p>
     </div>
 
-    <div class="bg-card border border-white/5 rounded-2xl overflow-hidden">
+    <div class="bg-card border border-border rounded-2xl overflow-hidden">
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
-            <tr class="grid grid-cols-12 gap-4 p-6 border-b border-white/10 bg-black/40 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <tr class="grid grid-cols-12 gap-4 p-6 border-b border-border bg-black/40 text-xs font-bold uppercase tracking-wider text-muted-foreground">
               <th scope="col" class="col-span-5 md:col-span-4 text-left">Player</th>
               <th scope="col" class="col-span-4 hidden md:block text-left">Game</th>
               <th scope="col" class="col-span-4 md:col-span-2 text-right">Win Amount</th>
@@ -40,13 +40,13 @@ const winners = await apiFetch<Winner[]>("/api/winners?limit=50");
                     <div class="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold border border-primary/30 flex-shrink-0">
                       {winner.playerName.charAt(0).toUpperCase()}
                     </div>
-                    <span class="font-bold text-white truncate">{winner.playerName}</span>
+                    <span class="font-bold text-foreground truncate">{winner.playerName}</span>
                   </td>
                   <td class="col-span-4 hidden md:flex items-center">
                     <span class="text-muted-foreground truncate">{winner.gameName}</span>
                   </td>
                   <td class="col-span-5 sm:col-span-4 md:col-span-2 text-right">
-                    <span class="text-xl font-bold text-primary drop-shadow-[0_0_5px_rgba(234,179,8,0.3)]">
+                    <span class="text-xl font-bold text-primary drop-amber-glow-sm">
                       {formatCurrency(winner.winAmount)}
                     </span>
                   </td>
