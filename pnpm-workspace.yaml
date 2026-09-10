@@ -34,6 +34,7 @@ minimumReleaseAgeExclude:
   - "@replit/*"
   - stripe-replit-sync
   - tsx
+  - zod
 
 packages:
   - artifacts/*
@@ -48,7 +49,7 @@ catalog:
   "@tailwindcss/vite": ^4.1.14
   "@astrojs/react": ^5.0.7
   "@tanstack/react-query": ^5.90.21
-  astro: ^7.1.1
+  astro: ^7.2.8
   "@types/node": ^25.3.3
   "@types/react": ^19.2.0
   "@types/react-dom": ^19.2.0
