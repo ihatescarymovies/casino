@@ -35,6 +35,7 @@ minimumReleaseAgeExclude:
   - stripe-replit-sync
   - tsx
   - zod
+  - magic-string
 
 packages:
   - artifacts/*
