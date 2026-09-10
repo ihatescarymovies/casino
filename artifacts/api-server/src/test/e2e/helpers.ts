@@ -311,272 +311,275 @@ export function seedHashChain(gameType: string, count = 10): MockHashChain[] {
 // Track last queried items per table so update() can narrow its scope.
 const lastQueryResults: Record<string, any[]> = {};
 
-export function setupMockDb() {
-  vi.mock("@workspace/db", () => ({
-    db: {
-      select: vi.fn(() => ({
-        from: vi.fn((table: any) => {
-          const tableName = table?.name ?? "";
-          const resolveTable = (data: any[]) => {
-            lastQueryResults[tableName] = data;
-            return {
-              where: vi.fn(() => ({
-                for: vi.fn(() => Promise.resolve(data)),
-                then: (resolve: any, reject: any) =>
-                  Promise.resolve(data).then(resolve, reject),
-              })),
-              orderBy: vi.fn(() => ({
-                limit: vi.fn(() => ({
-                  offset: vi.fn(() => Promise.resolve(data)),
-                })),
-              })),
+vi.mock("@workspace/db", () => ({
+  db: {
+    select: vi.fn(() => ({
+      from: vi.fn((table: any) => {
+        const tableName = table?.name ?? "";
+        const resolveTable = (data: any[]) => {
+          lastQueryResults[tableName] = data;
+          return {
+            where: vi.fn(() => ({
               for: vi.fn(() => Promise.resolve(data)),
               then: (resolve: any, reject: any) =>
                 Promise.resolve(data).then(resolve, reject),
-            };
+            })),
+            orderBy: vi.fn(() => ({
+              limit: vi.fn(() => ({
+                offset: vi.fn(() => Promise.resolve(data)),
+              })),
+            })),
+            for: vi.fn(() => Promise.resolve(data)),
+            then: (resolve: any, reject: any) =>
+              Promise.resolve(data).then(resolve, reject),
           };
-          if (tableName.includes("demo_wallets")) {
-            return resolveTable(dbState.demoWallets);
+        };
+        if (tableName.includes("demo_wallets")) {
+          return resolveTable(dbState.demoWallets);
+        }
+        if (tableName.includes("demo_transactions")) {
+          return resolveTable(dbState.demoTransactions);
+        }
+        if (tableName.includes("wallets")) {
+          return resolveTable(dbState.wallets);
+        }
+        if (tableName.includes("transactions")) {
+          return resolveTable(dbState.transactions);
+        }
+        if (tableName.includes("users")) {
+          return resolveTable(dbState.users);
+        }
+        if (tableName.includes("game_rounds")) {
+          return resolveTable(dbState.gameRounds);
+        }
+        if (tableName.includes("hash_chains")) {
+          return resolveTable(dbState.hashChains);
+        }
+        return resolveTable([]);
+      }),
+    })),
+    insert: vi.fn(() => ({
+      values: vi.fn((vals: any) => {
+        const values = Array.isArray(vals) ? vals : [vals];
+        const inserted: any[] = [];
+        for (const v of values) {
+          // Determine table from context or infer
+          if (v.userId && v.balance !== undefined && v.currency) {
+            const item = { id: idCounters.wallet++, ...v };
+            dbState.wallets.push(item);
+            inserted.push(item);
+          } else if (v.userId && v.resetCount !== undefined) {
+            const item = { id: idCounters.demoWallet++, ...v };
+            dbState.demoWallets.push(item);
+            inserted.push(item);
+          } else if (v.walletId && v.type) {
+            const item = {
+              id: idCounters.transaction++,
+              ...v,
+              createdAt: new Date(),
+            };
+            dbState.transactions.push(item);
+            inserted.push(item);
+          } else if (v.demoWalletId && v.type) {
+            const item = {
+              id: idCounters.demoTransaction++,
+              ...v,
+              createdAt: new Date(),
+            };
+            dbState.demoTransactions.push(item);
+            inserted.push(item);
+          } else if (v.gameType && v.betAmount !== undefined) {
+            const item = {
+              id: idCounters.gameRound++,
+              ...v,
+              createdAt: new Date(),
+            };
+            dbState.gameRounds.push(item);
+            inserted.push(item);
+          } else if (v.serverSeed && v.serverSeedHash) {
+            const item = {
+              id: idCounters.hashChain++,
+              ...v,
+              createdAt: new Date(),
+            };
+            dbState.hashChains.push(item);
+            inserted.push(item);
           }
-          if (tableName.includes("demo_transactions")) {
-            return resolveTable(dbState.demoTransactions);
-          }
-          if (tableName.includes("wallets")) {
-            return resolveTable(dbState.wallets);
-          }
-          if (tableName.includes("transactions")) {
-            return resolveTable(dbState.transactions);
-          }
-          if (tableName.includes("users")) {
-            return resolveTable(dbState.users);
-          }
-          if (tableName.includes("game_rounds")) {
-            return resolveTable(dbState.gameRounds);
-          }
-          if (tableName.includes("hash_chains")) {
-            return resolveTable(dbState.hashChains);
-          }
-          return resolveTable([]);
-        }),
-      })),
-      insert: vi.fn(() => ({
-        values: vi.fn((vals: any) => {
-          const values = Array.isArray(vals) ? vals : [vals];
-          const inserted: any[] = [];
-          for (const v of values) {
-            // Determine table from context or infer
-            if (v.userId && v.balance !== undefined && v.currency) {
-              const item = { id: idCounters.wallet++, ...v };
-              dbState.wallets.push(item);
-              inserted.push(item);
-            } else if (v.userId && v.resetCount !== undefined) {
-              const item = { id: idCounters.demoWallet++, ...v };
-              dbState.demoWallets.push(item);
-              inserted.push(item);
-            } else if (v.walletId && v.type) {
-              const item = {
-                id: idCounters.transaction++,
-                ...v,
-                createdAt: new Date(),
-              };
-              dbState.transactions.push(item);
-              inserted.push(item);
-            } else if (v.demoWalletId && v.type) {
-              const item = {
-                id: idCounters.demoTransaction++,
-                ...v,
-                createdAt: new Date(),
-              };
-              dbState.demoTransactions.push(item);
-              inserted.push(item);
-            } else if (v.gameType && v.betAmount !== undefined) {
-              const item = {
-                id: idCounters.gameRound++,
-                ...v,
-                createdAt: new Date(),
-              };
-              dbState.gameRounds.push(item);
-              inserted.push(item);
-            } else if (v.serverSeed && v.serverSeedHash) {
-              const item = {
-                id: idCounters.hashChain++,
-                ...v,
-                createdAt: new Date(),
-              };
-              dbState.hashChains.push(item);
-              inserted.push(item);
-            }
-          }
-          return { returning: vi.fn(() => Promise.resolve(inserted)) };
-        }),
-      })),
-      update: vi.fn((table: any) => ({
-        set: vi.fn((updates: any) => ({
-          where: vi.fn((condition: any) => {
-            const tableName = table?.name ?? "";
-            const lastItems = lastQueryResults[tableName];
-            const updatedItems: any[] = [];
-            const updateItems = (items: any[]) => {
-              if (lastItems && lastItems.length > 0) {
-                const lastIds = new Set(lastItems.map((i: any) => i.id));
-                for (const item of items) {
-                  if (lastIds.has(item.id)) {
-                    Object.assign(item, updates);
-                    updatedItems.push(item);
-                  }
-                }
-              } else {
-                for (const item of items) {
+        }
+        return { returning: vi.fn(() => Promise.resolve(inserted)) };
+      }),
+    })),
+    update: vi.fn((table: any) => ({
+      set: vi.fn((updates: any) => ({
+        where: vi.fn((condition: any) => {
+          const tableName = table?.name ?? "";
+          const lastItems = lastQueryResults[tableName];
+          const updatedItems: any[] = [];
+          const updateItems = (items: any[]) => {
+            if (lastItems && lastItems.length > 0) {
+              const lastIds = new Set(lastItems.map((i: any) => i.id));
+              for (const item of items) {
+                if (lastIds.has(item.id)) {
                   Object.assign(item, updates);
                   updatedItems.push(item);
                 }
               }
-            };
-            if (
-              tableName.includes("wallets") &&
-              updates.balance !== undefined
-            ) {
-              updateItems(dbState.wallets);
+            } else {
+              for (const item of items) {
+                Object.assign(item, updates);
+                updatedItems.push(item);
+              }
             }
-            if (tableName.includes("game_rounds")) {
-              updateItems(dbState.gameRounds);
+          };
+          if (
+            tableName.includes("wallets") &&
+            updates.balance !== undefined
+          ) {
+            updateItems(dbState.wallets);
+          }
+          if (tableName.includes("game_rounds")) {
+            updateItems(dbState.gameRounds);
+          }
+          if (
+            tableName.includes("hash_chains") &&
+            updates.isActive === false
+          ) {
+            // Only deactivate the first active chain to prevent
+            // premature rotation which would generate 1M entries and timeout
+            const target = dbState.hashChains.find((c) => c.isActive);
+            if (target) target.isActive = false;
+          }
+          return { returning: vi.fn(() => Promise.resolve(updatedItems)) };
+        }),
+      })),
+    })),
+    delete: vi.fn(() => ({
+      where: vi.fn(() => Promise.resolve()),
+    })),
+    transaction: vi.fn(async (fn: any) => {
+      const txSelectFrom = (table: any) => {
+        const tableName = table?.name ?? "";
+        const lookupTable = () => {
+          if (tableName.includes("demo_wallets")) return dbState.demoWallets;
+          if (tableName.includes("demo_transactions"))
+            return dbState.demoTransactions;
+          if (tableName.includes("wallets")) return dbState.wallets;
+          if (tableName.includes("transactions")) return dbState.transactions;
+          if (tableName.includes("game_rounds")) return dbState.gameRounds;
+          if (tableName.includes("hash_chains")) return dbState.hashChains;
+          if (tableName.includes("users")) return dbState.users;
+          return [] as any[];
+        };
+        return {
+          where: vi.fn(() => ({
+            for: vi.fn(() => Promise.resolve(lookupTable())),
+          })),
+        };
+      };
+      return fn({
+        select: vi.fn(() => ({
+          from: txSelectFrom,
+        })),
+        insert: vi.fn(() => ({
+          values: vi.fn((vals: any) => {
+            const values = Array.isArray(vals) ? vals : [vals];
+            const inserted: any[] = [];
+            for (const v of values) {
+              if (v.userId && v.balance !== undefined && v.currency) {
+                const item = { id: idCounters.wallet++, ...v };
+                dbState.wallets.push(item);
+                inserted.push(item);
+              } else if (v.userId && v.resetCount !== undefined) {
+                const item = { id: idCounters.demoWallet++, ...v };
+                dbState.demoWallets.push(item);
+                inserted.push(item);
+              } else if (v.walletId && v.type) {
+                const item = {
+                  id: idCounters.transaction++,
+                  ...v,
+                  createdAt: new Date(),
+                };
+                dbState.transactions.push(item);
+                inserted.push(item);
+              } else if (v.demoWalletId && v.type) {
+                const item = {
+                  id: idCounters.demoTransaction++,
+                  ...v,
+                  createdAt: new Date(),
+                };
+                dbState.demoTransactions.push(item);
+                inserted.push(item);
+              } else if (v.gameType && v.betAmount !== undefined) {
+                const item = {
+                  id: idCounters.gameRound++,
+                  ...v,
+                  createdAt: new Date(),
+                };
+                dbState.gameRounds.push(item);
+                inserted.push(item);
+              } else if (v.serverSeed && v.serverSeedHash) {
+                const item = {
+                  id: idCounters.hashChain++,
+                  ...v,
+                  createdAt: new Date(),
+                };
+                dbState.hashChains.push(item);
+                inserted.push(item);
+              }
             }
-            if (
-              tableName.includes("hash_chains") &&
-              updates.isActive === false
-            ) {
-              // Only deactivate the first active chain to prevent
-              // premature rotation which would generate 1M entries and timeout
-              const target = dbState.hashChains.find((c) => c.isActive);
-              if (target) target.isActive = false;
-            }
-            return { returning: vi.fn(() => Promise.resolve(updatedItems)) };
+            return { returning: vi.fn(() => Promise.resolve(inserted)) };
           }),
         })),
-      })),
-      delete: vi.fn(() => ({
-        where: vi.fn(() => Promise.resolve()),
-      })),
-      transaction: vi.fn(async (fn: any) => {
-        const txSelectFrom = (table: any) => {
-          const tableName = table?.name ?? "";
-          const lookupTable = () => {
-            if (tableName.includes("demo_wallets")) return dbState.demoWallets;
-            if (tableName.includes("demo_transactions"))
-              return dbState.demoTransactions;
-            if (tableName.includes("wallets")) return dbState.wallets;
-            if (tableName.includes("transactions")) return dbState.transactions;
-            if (tableName.includes("game_rounds")) return dbState.gameRounds;
-            if (tableName.includes("hash_chains")) return dbState.hashChains;
-            if (tableName.includes("users")) return dbState.users;
-            return [] as any[];
-          };
-          return {
-            where: vi.fn(() => ({
-              for: vi.fn(() => Promise.resolve(lookupTable())),
-            })),
-          };
-        };
-        return fn({
-          select: vi.fn(() => ({
-            from: txSelectFrom,
-          })),
-          insert: vi.fn(() => ({
-            values: vi.fn((vals: any) => {
-              const values = Array.isArray(vals) ? vals : [vals];
-              const inserted: any[] = [];
-              for (const v of values) {
-                if (v.userId && v.balance !== undefined && v.currency) {
-                  const item = { id: idCounters.wallet++, ...v };
-                  dbState.wallets.push(item);
-                  inserted.push(item);
-                } else if (v.userId && v.resetCount !== undefined) {
-                  const item = { id: idCounters.demoWallet++, ...v };
-                  dbState.demoWallets.push(item);
-                  inserted.push(item);
-                } else if (v.walletId && v.type) {
-                  const item = {
-                    id: idCounters.transaction++,
-                    ...v,
-                    createdAt: new Date(),
-                  };
-                  dbState.transactions.push(item);
-                  inserted.push(item);
-                } else if (v.demoWalletId && v.type) {
-                  const item = {
-                    id: idCounters.demoTransaction++,
-                    ...v,
-                    createdAt: new Date(),
-                  };
-                  dbState.demoTransactions.push(item);
-                  inserted.push(item);
-                } else if (v.gameType && v.betAmount !== undefined) {
-                  const item = {
-                    id: idCounters.gameRound++,
-                    ...v,
-                    createdAt: new Date(),
-                  };
-                  dbState.gameRounds.push(item);
-                  inserted.push(item);
-                } else if (v.serverSeed && v.serverSeedHash) {
-                  const item = {
-                    id: idCounters.hashChain++,
-                    ...v,
-                    createdAt: new Date(),
-                  };
-                  dbState.hashChains.push(item);
-                  inserted.push(item);
+        update: vi.fn((table: any) => ({
+          set: vi.fn((updates: any) => ({
+            where: vi.fn((condition: any) => {
+              const tableName = table?.name ?? "";
+              const lastItems = lastQueryResults[tableName];
+              const updateItems = (items: any[]) => {
+                if (lastItems && lastItems.length > 0) {
+                  const lastIds = new Set(lastItems.map((i: any) => i.id));
+                  for (const item of items) {
+                    if (lastIds.has(item.id)) Object.assign(item, updates);
+                  }
+                } else {
+                  for (const item of items) Object.assign(item, updates);
                 }
+              };
+              if (
+                tableName.includes("wallets") &&
+                updates.balance !== undefined
+              ) {
+                updateItems(dbState.wallets);
               }
-              return { returning: vi.fn(() => Promise.resolve(inserted)) };
+              if (tableName.includes("game_rounds")) {
+                updateItems(dbState.gameRounds);
+              }
+              return Promise.resolve();
             }),
           })),
-          update: vi.fn((table: any) => ({
-            set: vi.fn((updates: any) => ({
-              where: vi.fn((condition: any) => {
-                const tableName = table?.name ?? "";
-                const lastItems = lastQueryResults[tableName];
-                const updateItems = (items: any[]) => {
-                  if (lastItems && lastItems.length > 0) {
-                    const lastIds = new Set(lastItems.map((i: any) => i.id));
-                    for (const item of items) {
-                      if (lastIds.has(item.id)) Object.assign(item, updates);
-                    }
-                  } else {
-                    for (const item of items) Object.assign(item, updates);
-                  }
-                };
-                if (
-                  tableName.includes("wallets") &&
-                  updates.balance !== undefined
-                ) {
-                  updateItems(dbState.wallets);
-                }
-                if (tableName.includes("game_rounds")) {
-                  updateItems(dbState.gameRounds);
-                }
-                return Promise.resolve();
-              }),
-            })),
-          })),
-        });
-      }),
-    },
-    usersTable: { name: "users" },
-    walletsTable: { name: "wallets" },
-    demoWalletsTable: { name: "demo_wallets" },
-    transactionsTable: { name: "transactions" },
-    demoTransactionsTable: { name: "demo_transactions" },
-    gameRoundsTable: { name: "game_rounds" },
-    hashChainsTable: { name: "hash_chains" },
-    gamesTable: { name: "games" },
-    promotionsTable: { name: "promotions" },
-    winnersTable: { name: "winners" },
-    sessionsTable: { name: "sessions" },
-    authUsersTable: { name: "auth_users" },
-    authSessionsTable: { name: "auth_sessions" },
-    gameSessionsTable: { name: "game_sessions" },
-  }));
+        })),
+      });
+    }),
+  },
+  usersTable: { name: "users" },
+  walletsTable: { name: "wallets" },
+  demoWalletsTable: { name: "demo_wallets" },
+  transactionsTable: { name: "transactions" },
+  demoTransactionsTable: { name: "demo_transactions" },
+  gameRoundsTable: { name: "game_rounds" },
+  hashChainsTable: { name: "hash_chains" },
+  gamesTable: { name: "games" },
+  promotionsTable: { name: "promotions" },
+  winnersTable: { name: "winners" },
+  sessionsTable: { name: "sessions" },
+  authUsersTable: { name: "auth_users" },
+  authSessionsTable: { name: "auth_sessions" },
+  gameSessionsTable: { name: "game_sessions" },
+}));
+
+
+export function setupMockDb() {
+  resetDbState();
 }
 
 /* ── App factory ────────────────────────────────────────────────────── */
